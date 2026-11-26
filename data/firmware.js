@@ -130,6 +130,25 @@ int main(void) {
       ["Input và điện trở kéo lên", "Chuyển bit DDR về 0 để làm ngõ vào. Nếu dùng nút nối xuống GND, bật pull-up theo datasheet và đọc 0 khi nhấn. Với LED rời, chọn điện trở hạn dòng và nối chung GND. Mức điện áp cần tương thích với board."],
       ["Đọc–sửa–ghi cần ngữ nghĩa đúng", "OR phù hợp với thanh ghi đọc–ghi thông thường khi muốn giữ các bit khác. Với cờ kiểu ghi 1 để xóa, ghi đúng mặt nạ cho cờ cần xóa nếu datasheet quy định. Không suy từ tên thanh ghi. Kiểm cả việc ISR có thể đổi thanh ghi giữa lúc đọc và lúc ghi."]
     ]);
+  add("bare","avr-port-mapping","ATmega328P: PC0 và PD2 điều khiển LED PB5","Chọn đúng thanh ghi của từng cổng khi nối hai đầu vào và một đèn.",
+    [
+      ["Sơ đồ tín hiệu", "Nối nút RUN từ PC0 xuống GND và nút INHIBIT từ PD2 xuống GND. Bật điện trở kéo lên cho cả hai nút. LED nối PB5 qua điện trở hạn dòng theo kiểu mức cao làm sáng. Trên Uno R3, PC0 tương ứng A0, PD2 tương ứng D2 và PB5 tương ứng D13. Các tên A0, D2 và D13 là nhãn của bo."],
+      ["Cấu hình từng cổng", "Xóa bit 0 của DDRC rồi đặt bit 0 của PORTC để PC0 thành đầu vào có kéo lên. Làm tương tự với bit 2 của DDRD và PORTD. Đặt bit 5 của DDRB để PB5 thành đầu ra. Giả định PUD bằng 0 và chân đang dùng chức năng GPIO."],
+      ["Đọc đầu vào và ghi đầu ra", "Đọc bit 0 của PINC và bit 2 của PIND. Nút nhấn cho 0, nút nhả cho 1. LED chỉ sáng khi RUN được nhấn và INHIBIT được nhả. Ghi kết quả vào bit 5 của PORTB và giữ toàn bộ bit còn lại."],
+      ["Dự đoán trước khi chạy", "Với PINC = 0xFE và PIND = 0xFF, RUN đang nhấn còn INHIBIT đang nhả. Nếu PORTB ban đầu là 0x01, kết quả là 0x21. Nếu PIND chuyển thành 0xFB, INHIBIT đang nhấn và PORTB trở về 0x01."]
+    ]);
+  add("bare","avr-pinb-toggle","ATmega328P: đảo riêng PB5 bằng PINB","Tính byte ghi vào PINB và kết quả của chốt PORTB.",
+    [
+      ["Đọc và ghi PINB có ý nghĩa khác nhau", "Đọc PINB cho trạng thái chân được lấy mẫu. Ghi 1 vào bit n của PINB yêu cầu phần cứng đảo bit n trong chốt PORTB. Ghi 0 vào một bit không làm đổi chốt tương ứng."],
+      ["Chọn đúng hình thức ghi", "Để đảo riêng PB5, byte ghi phải là 0x20. Khi mô phỏng, tính chốt sau ghi bằng PORTB XOR byte ghi. Trên firmware, ghi PINB = _BV(PINB5). Tránh dùng PINB |= mask vì biểu thức có thể đọc và ghi lại cả các bit khác đang ở mức 1."],
+      ["Tự kiểm", "Với chốt ban đầu 0xA5, ghi 0x20 cho kết quả 0x85. Với chốt ban đầu 0x05, cùng thao tác cho 0x25. Với DDRB5 bằng 0, thay đổi PORTB5 tác động đến yêu cầu kéo lên của đầu vào thay vì điều khiển chân như đầu ra."]
+    ]);
+  add("bare","avr-pcint-groups","ATmega328P: chọn nhóm ngắt đổi mức cho PB0, PC1, PD4","Ánh xạ chân sang PCMSK, PCICR và vector tương ứng.",
+    [
+      ["Ánh xạ ba cổng", "PB0 là PCINT0, dùng bit 0 của PCMSK0 và nhóm PCIE0. PC1 là PCINT9, dùng bit 1 của PCMSK1 và nhóm PCIE1. PD4 là PCINT20, dùng bit 4 của PCMSK2 và nhóm PCIE2. Ba vector của avr-libc lần lượt là PCINT0_vect, PCINT1_vect và PCINT2_vect."],
+      ["Bật theo từng yêu cầu", "Đặt mặt nạ của chân trong PCMSK trước, sau đó bật nhóm tương ứng trong PCICR. Nếu nền ứng dụng đã bật chân khác, dùng OR để giữ chúng. Đề luyện chỉ kiểm chọn mặt nạ và nhóm."],
+      ["Đem lên bo", "Trong firmware thật, cấu hình hướng chân và mức nghỉ. Nếu cần bỏ cờ pending trước khi bật ngắt, ghi đúng mặt nạ vào PCIFR theo cơ chế ghi 1 để xóa. Cài ISR và bật ngắt toàn cục khi đã sẵn sàng. Trong ISR, đọc PINx và so với mẫu trước nếu cần xác định chân nào đổi và cạnh nào xảy ra."]
+    ]);
   add("bare","volatile","volatile, truy cập nguyên tử và quy ước mã","Tách việc trình biên dịch phải truy cập biến khỏi tính nhất quán giữa ISR và main.",
     [
       ["Điều volatile diễn đạt", "Khi đối tượng đại diện cho thanh ghi ngoại vi hoặc giá trị có thể đổi ngoài luồng C đang đọc, volatile yêu cầu trình biên dịch giữ các truy cập quan sát được theo quy tắc của triển khai. Nó không cung cấp khóa, nguyên tử hay giao thức chia sẻ bộ nhớ."],

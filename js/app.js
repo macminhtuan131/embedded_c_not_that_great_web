@@ -86,7 +86,6 @@
     const [page] = route;
     const links = [["","home","Tổng quan"],["lo-trinh","map","Lộ trình"],["luyen","terminal","Luyện code"],["du-an","flask","Dự án"]];
     $("#topbar").innerHTML = `<div class="top-inner">
-      <a class="brand" href="#" aria-label="Xưởng Nhúng, trang chủ"><img src="./assets/mark.svg" width="38" height="38" alt=""><span>Xưởng Nhúng<small>HỌC C NHÚNG</small></span></a>
       <nav class="top-links" aria-label="Điều hướng chính">${links.map(([id,key,name])=>{
         const selected=id===page || (id==="lo-trinh" && page==="bai") || (id==="luyen" && ["mo-phong","huong-dan"].includes(page));
         return `<a href="#${id}" ${selected?'aria-current="page"':""}>${i(key,17)}<span>${name}</span></a>`;
@@ -102,14 +101,7 @@
   }
   function home() {
     const counts=[["book",modules.length,"Mô-đun học"],["terminal",Object.keys(exercises).length,"Bài chạy C trên web"],["cpu",catalogItems.length,"Mục theo EWskills"],["flask",projects.length,"Dự án thực hành"]];
-    main.innerHTML = `<div class="container home"><section class="hero">
-      <div class="hero-content"><div class="eyebrow hero-eyebrow"><span></span> LỘ TRÌNH C NHÚNG TIẾNG VIỆT</div>
-      <h1>Học C nhúng<br><em>từ dòng đầu tiên.</em></h1>
-      <p>Học viết và kiểm thử C trước, rồi dùng C để điều khiển vi điều khiển và xây dựng firmware.</p>
-      <div class="hero-actions"><a class="btn primary" href="${lessonLink(last||"hello")}">${i("play",17)} ${last?"Học tiếp":"Bắt đầu học"}</a>
-      <a class="btn hero-secondary" href="#lo-trinh">${i("map",18)} Xem lộ trình</a></div></div>
-      <div class="hero-caption"><span></span> ATmega328P <small>KIẾN TRÚC AVR 8 BIT</small></div>
-      </section><div class="metrics" aria-label="Nội dung khóa học">${counts.map(([key,n,label])=>`<div class="metric"><div class="metric-icon">${i(key)}</div><div><strong>${n}</strong><span>${label}</span></div></div>`).join("")}</div>
+    main.innerHTML = `<div class="container home"><div class="metrics" aria-label="Nội dung khóa học">${counts.map(([key,n,label])=>`<div class="metric"><div class="metric-icon">${i(key)}</div><div><strong>${n}</strong><span>${label}</span></div></div>`).join("")}</div>
       <section class="path-section">${section("Lộ trình học","Bắt đầu với C trên máy tính rồi áp dụng vào các bài thực hành nhúng.")}
       <div class="phase-grid">${tracks.map(track=>{
         const group=modules.filter(item=>item.track===track.id);
@@ -117,7 +109,7 @@
         <h3>${track.title}</h3><p>${track.desc}</p><div class="track-topics">${track.topics.map(topic=>`<span>${topic}</span>`).join("")}</div>
         <div class="phase-meta"><span>${group.length} mô-đun · ${track.id==="nhung"?"EWskills":"Tài liệu GitHub"}</span><span>Xem nội dung ${i("right",15)}</span></div></a>`;
       }).join("")}</div></section>
-      <section class="home-bottom"><div>${section("Bắt đầu từ đây","Học theo thứ tự nếu bạn mới làm quen với C.")}
+      <section class="home-bottom"><div>${section("Bắt đầu từ đây","Học theo thứ tự nếu bạn mới làm quen với C.") + (last ? `<a class="btn secondary resume-link" href="${lessonLink(last)}">Học tiếp</a>` : "")}
       <div class="panel">${lessons.slice(0,4).map((item,index)=>lessonRow(item,index)).join("")}</div></div>
       <div>${section("Góc thực hành")}
       <a class="panel tool-card" href="#mo-phong"><span class="phase-icon">${i("grid",22)}</span><div><strong>Mô phỏng bit</strong><p>Bật, xóa và đảo bit trong thanh ghi 8 bit.</p></div>${i("right",17)}</a>
@@ -359,6 +351,7 @@
     const answers=quiz[item.id]||{};
     const correct=item.questions.filter((q,index)=>answers[index]===q.ans).length;
     return `<div class="quiz-summary"><h2>Kiểm tra kiến thức</h2>${badge(correct+"/"+item.questions.length+" câu đúng",correct===item.questions.length?"success":"")}</div>
+      <p>${inline(item.avrContext)}</p>
       ${item.questions.map((q,index)=>`<section class="quiz-q"><h3>${index+1}. ${inline(q.q)}</h3>
       <div class="quiz-options">${q.opts.map((option,which)=>`<button class="${answers[index]===which?(which===q.ans?"right-answer":"wrong-answer"):""}" aria-pressed="${answers[index]===which}" data-quiz="${index}" data-answer="${which}"><span>${String.fromCharCode(65+which)}</span>${inline(option)}</button>`).join("")}</div>
       ${answers[index]===undefined?"":`<p class="quiz-feedback"><strong>${answers[index]===q.ans?"Đúng.":"Chưa đúng."}</strong> ${inline(q.exp)}</p>`}</section>`).join("")}`;

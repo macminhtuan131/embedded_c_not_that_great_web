@@ -246,7 +246,7 @@ int main(void) {
 }`, `values = calloc(n, sizeof *values);
     if (values == NULL) return 1;`, [["Một phần tử","1 19","19"],["Có số âm","4 9 3 -4 12","20"],["Tổng bằng không","2 -9 9","0"]],
     ["calloc nhận số phần tử rồi kích thước mỗi phần tử.","Xử lý NULL ngay sau cấp phát."], "#include <stdlib.h>\n");
-  add("encoding","Ghép hai byte thành số 16 bit theo thứ tự byte cao trước, rồi in hệ 16 gồm bốn chữ số viết hoa.",
+  add("encoding","Cảm biến SPI trên ATmega328P gửi byte cao trước. hi và lo là hai byte đã đọc lần lượt từ SPDR. Ghép thành số đo 16 bit và in bốn chữ số hex.",
     `int main(void) {
     unsigned hi, lo;
     if (scanf("%u%u", &hi, &lo) != 2) return 1;
@@ -257,7 +257,7 @@ int main(void) {
 }`, "value = (uint16_t)(((uint16_t)hi << 8) | lo);",
     [["Hai byte khác nhau","18 52","1234"],["Byte cao bằng 0","0 255","00FF"],["Đầy bit","255 255","FFFF"]],
     ["Dịch byte cao sang trái 8 bit.","OR với byte thấp."]);
-  add("masks","Đặt bit có chỉ số bit trong reg, giữ các bit còn lại. bit nằm trong 0–7. In giá trị cuối ở hệ 16.",
+  add("masks","reg là bản sao chốt PORTD theo hệ 10. Đặt riêng bit từ 0 đến 7 rồi in chốt mới theo hệ 16. Giả định các chân đang xét dùng GPIO; trên bo dùng USART0, kiểm chức năng PD0 và PD1 trước khi ghi.",
     `int main(void) {
     unsigned reg, bit;
     if (scanf("%u%u", &reg, &bit) != 2) return 1;
@@ -266,7 +266,7 @@ int main(void) {
     return 0;
 }`, "reg |= 1U << bit;", [["Bit giữa","5 5","25"],["Bit cuối","0 7","80"],["Đã bật","255 0","FF"]],
     ["Tạo mặt nạ từ 1U dịch trái.","OR chỉ đặt bit đã chọn, giữ nguyên các vị trí khác."]);
-  add("gpio","Mô phỏng thanh ghi hướng và đầu ra. Khi on bằng 1, đặt đường GPIO bit 5 làm đầu ra mức cao. Khi on bằng 0, vẫn đặt hướng nhưng xóa bit mức. Giữ mọi bit khác.",
+  add("gpio","Điều khiển LED tác động mức cao trên PB5. Đầu vào ddr và port lần lượt mô phỏng DDRB và PORTB. Luôn đặt DDRB5. Khi on = 1 đặt PORTB5, khi on = 0 xóa PORTB5. Giữ các bit còn lại và in DDRB, PORTB theo hệ 16.",
     `int main(void) {
     unsigned ddr, port, on;
     if (scanf("%u%u%u", &ddr, &port, &on) != 3) return 1;
@@ -278,7 +278,7 @@ int main(void) {
     if (on) port |= mask;
     else port &= ~mask;`, [["Bật từ đầu","0 0 1","20 20"],["Tắt bit 5","5 255 0","25 DF"],["Giữ bit khác","255 4 1","FF 24"]],
     ["Hướng luôn dùng OR với mặt nạ bit 5.","Mức thấp cần AND với mặt nạ đảo."]);
-  add("timer","Số đếm tick đi từ 0 đến top. Với mỗi tick dài us micro giây, in khoảng thời gian giữa hai sự kiện so khớp CTC. top từ 0 đến 65535, us từ 1 đến 100.",
+  add("timer","Timer1 dùng CTC với OCR1A = top. us là thời gian mỗi tick tính theo micro giây từ clock và bộ chia. Tính khoảng thời gian giữa hai lần so khớp. Ví dụ 16 MHz chia 64 cho us = 4. top từ 0 đến 65535, us từ 1 đến 100.",
     `int main(void) {
     unsigned top, us;
     if (scanf("%u%u", &top, &us) != 2) return 1;
@@ -289,7 +289,7 @@ int main(void) {
 }`, "period = ((unsigned long)top + 1UL) * us;",
     [["CTC mỗi ms","249 4","1000"],["Một tick","0 4","4"],["Timer 16 bit đầy thang","65535 100","6553600"]],
     ["Bộ đếm bao gồm cả tick số 0.","Mở rộng kiểu trước khi cộng một tick."]);
-  add("adc","Đổi mã ADC 0–1023 thành giá trị mV ước lượng bằng code × vref / 1024. vref từ 1000 đến 5000 mV. Làm tròn xuống theo phép chia nguyên.",
+  add("adc","PC0/ADC0 nhận điện áp cảm biến. code là mã 10 bit đã ghép từ ADCL và ADCH với ADLAR = 0. vref là tham chiếu 1000 đến 5000 mV. Tính code × vref / 1024 và bỏ phần lẻ.",
     `int main(void) {
     unsigned code, vref;
     if (scanf("%u%u", &code, &vref) != 2) return 1;
@@ -300,7 +300,7 @@ int main(void) {
 }`, "mv = (unsigned long)code * vref / 1024UL;",
     [["Bằng 0","0 5000","0"],["Giữa thang","512 5000","2500"],["Gần cực đại","1023 3300","3296"]],
     ["Dùng kiểu đủ rộng trước khi nhân.","Chia cho số lượng mức 1024."]);
-  add("scheduling","Mô phỏng bộ đếm tick uint32_t. In CHAY nếu thời gian modulo giữa then và now lớn hơn hoặc bằng period, ngược lại in DOI. Khoảng thực đã qua nhỏ hơn một chu kỳ bộ đếm.",
+  add("scheduling","ISR Timer0 CTC tăng tick phần mềm uint32_t mỗi 1 ms. now là ảnh chụp tick, then là mốc lần trước của tác vụ ADC0, period là kỳ tính theo tick. In CHAY nếu đến kỳ và DOI nếu chưa. Thời gian thực đã qua nhỏ hơn một vòng bộ đếm.",
     `#include <inttypes.h>
 int main(void) {
     uint32_t then, now, period;
@@ -312,7 +312,7 @@ int main(void) {
 }`, "due = (uint32_t)(now - then) >= period;",
     [["Chưa đủ","100 104 5","DOI"],["Đúng hạn","100 105 5","CHAY"],["Qua điểm quấn","4294967293 2 5","CHAY"],["Qua điểm quấn, còn sớm","4294967293 1 5","DOI"]],
     ["Lấy now trừ then trong số không dấu 32 bit.","Chỉ so sánh khoảng thời gian, không so trực tiếp thứ tự now và then."]);
-  add("state-machines","Theo dõi trạng thái cảnh báo. Mẫu từ 70 trở lên đưa BINH_THUONG sang CHO. Hai mẫu cao liên tiếp đưa CHO sang BAO_DONG. Mọi mẫu thấp đưa về BINH_THUONG.",
+  add("state-machines","ATmega328P lấy mẫu ở PC0/ADC0. Mẫu từ 70 đưa BINH_THUONG sang CHO, hai mẫu cao liên tiếp đưa CHO sang BAO_DONG. Mẫu thấp đưa về BINH_THUONG. Main có thể dùng BAO_DONG để bật PB5. Bài chấm trạng thái cuối.",
     `typedef enum { NORMAL, PENDING, ALARM } State;
 
 static State update(State current, int sample) {
@@ -332,7 +332,7 @@ int main(void) {
     if (current == PENDING) return ALARM;`,
     [["Một mẫu cao","70","CHO"],["Hai mẫu cao","70 71","BAO_DONG"],["Đặt lại","74 80 69","BINH_THUONG"],["Mẫu không liên tiếp","75 60 80","CHO"]],
     ["Kiểm mẫu thấp đầu tiên để đặt lại ở mọi trạng thái.","Hai trạng thái đầu có bước chuyển khi tiếp tục nhận mẫu cao."]);
-  add("testing","Hoàn thành hàm tìm phần tử theo chỉ số. Chỉ đọc khi 0 <= index < length. In LOI nếu index không hợp lệ.",
+  add("testing","Main nhận chỉ số qua USART0 và đọc mảng ba mẫu ADC0 trong SRAM. Chỉ đọc khi 0 <= index < length. Trả mẫu qua value nếu hợp lệ, nếu sai in LOI.",
     `static bool read_at(const int *arr, int length, int index, int *value) {
     IMPLEMENT
     return false;
@@ -351,6 +351,52 @@ int main(void) {
     }`,
     [["Phần tử đầu","0","21"],["Phần tử cuối","2","89"],["Ngay sau cuối","3","LOI"],["Số âm","-1","LOI"]],
     ["Chỉ truy cập mảng sau khi cả hai cận được xác nhận.","Ghi kết quả qua con trỏ value rồi trả true."]);
+
+  add("avr-port-mapping","Cấu hình PB5 làm đầu ra, PC0 và PD2 làm đầu vào có kéo lên. RUN ở PC0 và INHIBIT ở PD2 đều tác động mức thấp. Chỉ bật LED PB5 khi RUN nhấn và INHIBIT nhả. Giữ các bit khác. Đầu vào theo hệ 16: DDRB PORTB DDRC PORTC DDRD PORTD PINC PIND. In sáu thanh ghi cấu hình theo cùng thứ tự.",
+    `int main(void) {
+    unsigned DDRB, PORTB, DDRC, PORTC, DDRD, PORTD, PINC, PIND;
+    if (scanf("%x%x%x%x%x%x%x%x", &DDRB,&PORTB,&DDRC,&PORTC,&DDRD,&PORTD,&PINC,&PIND) != 8) return 1;
+    IMPLEMENT
+    printf("%02X %02X %02X %02X %02X %02X\\n", DDRB,PORTB,DDRC,PORTC,DDRD,PORTD);
+    return 0;
+}`,
+    `DDRB |= (1U << 5);
+    DDRC &= ~(1U << 0);
+    PORTC |= (1U << 0);
+    DDRD &= ~(1U << 2);
+    PORTD |= (1U << 2);
+    if (!(PINC & (1U << 0)) && (PIND & (1U << 2))) PORTB |= (1U << 5);
+    else PORTB &= ~(1U << 5);`,
+    [["RUN nhấn","01 01 03 02 84 80 FE FF","21 21 02 03 80 84"],
+     ["INHIBIT chặn","01 21 03 02 84 80 FE FB","21 01 02 03 80 84"],
+     ["Hai nút nhả","08 28 00 10 00 08 FF FF","28 08 00 11 00 0C"],
+     ["Chỉ INHIBIT nhấn","08 28 00 10 00 08 FF FB","28 08 00 11 00 0C"]],
+    ["DDR bit 1 là output. Bật kéo lên bằng PORT khi DDR bit 0.","Đọc PINC và PIND. Viết kết quả vào PORTB."]);
+
+  add("avr-pinb-toggle","In hai byte hệ 16: byte cần ghi vào PINB để đảo riêng PB5, sau đó giá trị PORTB sau thao tác. Đầu vào là PORTB và mức PINB lấy mẫu trước khi ghi. Đề mô phỏng cơ chế ghi 1 để đảo.",
+    `int main(void) {
+    unsigned PORTB, sampled_PINB;
+    if (scanf("%x%x", &PORTB, &sampled_PINB) != 2) return 1;
+    unsigned write_to_PINB = 0;
+    IMPLEMENT
+    printf("%02X %02X\\n",write_to_PINB, PORTB ^ write_to_PINB);
+    return 0;
+}`, "write_to_PINB = 1U << 5;",
+    [["PB5 đang bằng 1","A5 FF","20 85"],["PB5 đang bằng 0","05 00","20 25"],["Các chân khác không được đảo","DF DF","20 FF"]],
+    ["Byte ghi chỉ chứa bit 5 bằng 1.", "Giá trị PINB lấy mẫu không quyết định byte cần ghi."]);
+
+  add("avr-pcint-groups","Chương trình nhận PCMSK0 PCMSK1 PCMSK2 PCICR ban đầu theo hệ 16, rồi nhận một số thập phân từ 0 đến 7. Bit 0 của số đó yêu cầu bật PB0, bit 1 bật PC1, bit 2 bật PD4. Chỉ đặt thêm các bit cần thiết, giữ cấu hình đang có. In bốn thanh ghi hệ 16.",
+    `int main(void) {
+    unsigned PCMSK0, PCMSK1, PCMSK2, PCICR, enable;
+    if (scanf("%x%x%x%x%u", &PCMSK0,&PCMSK1,&PCMSK2,&PCICR,&enable) != 5) return 1;
+    IMPLEMENT
+    printf("%02X %02X %02X %02X\\n",PCMSK0,PCMSK1,PCMSK2,PCICR);
+    return 0;
+}`, `if (enable & 1U) { PCMSK0 |= 0x01U; PCICR |= 0x01U; }
+    if (enable & 2U) { PCMSK1 |= 0x02U; PCICR |= 0x02U; }
+    if (enable & 4U) { PCMSK2 |= 0x10U; PCICR |= 0x04U; }`,
+    [["Chỉ PD4","00 00 00 00 4","00 00 10 04"],["Chỉ PC1","00 00 00 00 2","00 02 00 02"],["Cả ba cổng","80 10 02 00 7","81 12 12 07"],["Giữ cấu hình trước","01 22 80 03 0","01 22 80 03"]],
+    ["PCINT20 thuộc nhóm 2 nhưng bật bit 4 trong PCMSK2.", "Mỗi yêu cầu đặt cả bit chân trong PCMSK và bit nhóm trong PCICR."]);
 
   projects.push(
     {id:"calculator",icon:"terminal",level:"Bắt đầu",title:"Máy tính và đổi nhiệt độ",summary:"Tách xử lý nhập xuất khỏi logic tính toán để mỗi phép toán có thể kiểm độc lập.",needs:["io","branches","functions"],steps:["Tạo thực đơn lặp gồm cộng, trừ, nhân, chia và đổi Celsius sang Fahrenheit. Viết riêng hàm cho mỗi phép tính.", "Đọc một dòng bằng fgets rồi phân tích. Báo mã lệnh lạ, dòng rỗng và giá trị vượt miền theo cách nhất quán.", "Quy định phép chia dùng số nguyên hay số thực. Trả trạng thái lỗi khi chia cho 0. Đưa logic thuần vào calc.c với calc.h.", "Kiểm từng hàm với giá trị thường, giá trị âm và giới hạn đã công bố. Kiểm nhập lại sau một dòng sai."], checks:["Đổi 0 °C thành 32 °F và -40 °C thành -40 °F.", "Chia 7 cho 0 trả lỗi và vòng lặp vẫn chờ lệnh tiếp.", "Chạy lệnh thoát và chương trình trả mã 0."]},

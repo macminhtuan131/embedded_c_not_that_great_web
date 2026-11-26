@@ -335,7 +335,7 @@ window.COURSE = {
         "~ Trong Microchip Studio (F11), xem cửa sổ Processor Status để thấy cờ C trong SREG bật màu đỏ."
       ],
       "problem": {
-        "scenario": "Bạn có hai số đếm xung 8 bit a và b. Viết hàm cộng hai số uint8_t, trả byte thấp qua con trỏ result và trả 1 nếu tổng lớn hơn 255, ngược lại trả 0. Ví dụ 200 + 100 cho byte thấp 44. Con trỏ đầu ra được giả định hợp lệ.",
+        "scenario": "Bộ đếm xung PD2 lưu hai phần tăng trong SRAM. Tính byte thấp và số nhớ để cộng tiếp byte cao. Đối chiếu SREG.C ngay sau lệnh ADD nếu kiểm bằng disassembly.\n\nBạn có hai số đếm xung 8 bit a và b. Viết hàm cộng hai số uint8_t, trả byte thấp qua con trỏ result và trả 1 nếu tổng lớn hơn 255, ngược lại trả 0. Ví dụ 200 + 100 cho byte thấp 44. Con trỏ đầu ra được giả định hợp lệ.",
         "prototype": "uint8_t add_u8_carry(uint8_t a, uint8_t b, uint8_t *result)",
         "workedExample": [
           "Bước 1: Khởi tạo hai biến 8-bit không dấu (0. (a (R24)=200 (0xC8), b (R25)=100 (0x64))",
@@ -572,7 +572,7 @@ window.COURSE = {
         "~ Với Timer wrap-around: (uint8_t)(5 - 250) = 11 ticks chính xác!"
       ],
       "problem": {
-        "scenario": "Trong bộ đếm thời gian timeout cho cảm biến siêu âm HC-SR04 trên ATmega328P, bạn cần trừ thời gian đã trôi qua `elapsed` khỏi quỹ thời gian còn lại `ticks` (cả hai đều là `uint8_t`). Nếu `elapsed > ticks`, phép trừ không dấu sẽ bị underflow nhảy vọt lên gần 255 khiến hệ thống bị treo chờ quá lâu. Hãy viết hàm trừ bão hòa (saturating subtract): nếu underflow thì trả về `0` và báo cờ `*underflow = 1`.",
+        "scenario": "Vòng đọc PD2 dùng bộ đếm tick 8 bit. Tách kết quả phép trừ theo modulo khỏi tín hiệu a < b báo cần mượn.\n\nTrong bộ đếm thời gian timeout cho cảm biến siêu âm HC-SR04 trên ATmega328P, bạn cần trừ thời gian đã trôi qua `elapsed` khỏi quỹ thời gian còn lại `ticks` (cả hai đều là `uint8_t`). Nếu `elapsed > ticks`, phép trừ không dấu sẽ bị underflow nhảy vọt lên gần 255 khiến hệ thống bị treo chờ quá lâu. Hãy viết hàm trừ bão hòa (saturating subtract): nếu underflow thì trả về `0` và báo cờ `*underflow = 1`.",
         "prototype": "uint8_t sub_u8_safe(uint8_t ticks, uint8_t elapsed, uint8_t *underflow)",
         "workedExample": [
           "Bước 1: Giả sử thanh ghi đếm TCNT0 hiện tại là 10, nhưng ta trừ đi 25. (ticks=10 (0x0A), elapsed=25 (0x19))",
@@ -782,7 +782,7 @@ window.COURSE = {
         "- Đặc biệt nguy hiểm khi tính sai số PID motor (error âm so với deadband unsigned)."
       ],
       "problem": {
-        "scenario": "Cảm biến nhiệt độ DS18B20 trả về nhiệt độ có dấu `int16_t temp_c` (có thể âm vào mùa đông hoặc trong kho lạnh, ví dụ `-1°C`), trong khi ngưỡng bật quạt làm mát lưu dạng không dấu `uint16_t threshold = 10U`. Nếu viết trực tiếp `if (temp_c > threshold)`, quạt lại BẬT ở `-1°C` do bẫy ép kiểu ngầm của C! Hãy viết hàm so sánh an toàn chuẩn MISRA C để quạt chỉ bật khi `temp_c` thực sự lớn hơn `threshold`.",
+        "scenario": "Mẫu ADC0 đã hiệu chuẩn có thể âm dù ngưỡng cảnh báo là số không dấu. Kiểm mẫu âm trước khi so sánh trên avr-gcc có int 16 bit.\n\nCảm biến nhiệt độ DS18B20 trả về nhiệt độ có dấu `int16_t temp_c` (có thể âm vào mùa đông hoặc trong kho lạnh, ví dụ `-1°C`), trong khi ngưỡng bật quạt làm mát lưu dạng không dấu `uint16_t threshold = 10U`. Nếu viết trực tiếp `if (temp_c > threshold)`, quạt lại BẬT ở `-1°C` do bẫy ép kiểu ngầm của C! Hãy viết hàm so sánh an toàn chuẩn MISRA C để quạt chỉ bật khi `temp_c` thực sự lớn hơn `threshold`.",
         "prototype": "uint8_t is_over_temp(int16_t temp_c, uint16_t threshold)",
         "workedExample": [
           "Bước 1: Biến nhiệt độ có dấu 16-bit mang giá trị -1. (temp_c=-1 (signed), Hex bù 2=0xFFFF)",
@@ -961,7 +961,7 @@ window.COURSE = {
         "+ adc_raw=512, offset=-12 → acc=500 → adc_cal=500"
       ],
       "problem": {
-        "scenario": "Bộ ADC 10-bit của ATmega328P đọc cảm biến áp suất trả về `uint16_t adc_raw` (0..1023). Khi hiệu chuẩn điểm 0 (zero calibration), bạn cần cộng thêm hệ số bù có dấu `int16_t offset` (ví dụ `-12` hoặc `+15`). Hãy viết hàm cộng an toàn và kẹp (clamp) kết quả trong đúng dải `[0, 1023]` để không bao giờ bị tràn âm lên `65529` hoặc vượt quá `1023`.",
+        "scenario": "Đọc mã 10 bit ở PC0/ADC0. Cộng offset bằng kiểu đủ rộng rồi giới hạn kết quả về 0 đến 1023.\n\nBộ ADC 10-bit của ATmega328P đọc cảm biến áp suất trả về `uint16_t adc_raw` (0..1023). Khi hiệu chuẩn điểm 0 (zero calibration), bạn cần cộng thêm hệ số bù có dấu `int16_t offset` (ví dụ `-12` hoặc `+15`). Hãy viết hàm cộng an toàn và kẹp (clamp) kết quả trong đúng dải `[0, 1023]` để không bao giờ bị tràn âm lên `65529` hoặc vượt quá `1023`.",
         "prototype": "uint16_t adc_apply_offset(uint16_t adc_raw, int16_t offset)",
         "workedExample": [
           "Bước 1: Đọc ADC 10-bit (0. (adc_raw=5 (uint16_t), offset=-12 (int16_t))",
@@ -1065,10 +1065,21 @@ window.COURSE = {
           ],
           "ans": 2,
           "exp": "Unsigned underflow: (3 - 5) mod 256 = 254 (0xFE)."
+        },
+        {
+          "q": "ADD cộng 0xFF với 0x01. Byte thấp bằng bao nhiêu?",
+          "opts": [
+            "0x00",
+            "0xFF",
+            "0x01"
+          ],
+          "ans": 0,
+          "exp": "Tổng 256 cho byte thấp bằng 0."
         }
       ],
       "remember": "Luôn dùng kiểu cố định kích thước trong `<stdint.h>` (`uint8_t`, `int16_t`, `uint32_t`) khi lập trình ATmega328P.",
-      "pitfall": "Đừng bao giờ giả định `int` là 32-bit như trên PC hoặc STM32!"
+      "pitfall": "Đừng bao giờ giả định `int` là 32-bit như trên PC hoặc STM32!",
+      "avrContext": "Dùng độ rộng kiểu trên ATmega328P để dự đoán giá trị byte lưu trong SRAM. Xem cờ C riêng tại lệnh ADD trong debugger."
     },
     {
       "id": 6,
@@ -1118,10 +1129,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Trên AVR, hằng số `1` mặc định là signed 16-bit `int`. Dịch trái vào bit 15 (sign bit) là Undefined Behavior theo chuẩn C99; hậu tố `U` ép nó thành unsigned."
+        },
+        {
+          "q": "Với avr-gcc có int 16 bit, int16_t -1 so sánh nhỏ hơn uint16_t 1 cho gì?",
+          "opts": [
+            "Đúng",
+            "Sai",
+            "Lỗi cú pháp"
+          ],
+          "ans": 1,
+          "exp": "-1 chuyển sang uint16_t thành 65535."
         }
       ],
       "remember": "Hậu tố `U` (như `1U << 7`, `1UL << 20`) là bắt buộc trên AVR để tránh Integer Promotion lỗi 16-bit.",
-      "pitfall": "Rất nhiều sinh viên viết `1 << 16` trên ATmega328P và nhận về kết quả 0 vì `1` chỉ có 16-bit! Phải viết `1UL << 16`."
+      "pitfall": "Rất nhiều sinh viên viết `1 << 16` trên ATmega328P và nhận về kết quả 0 vì `1` chỉ có 16-bit! Phải viết `1UL << 16`.",
+      "avrContext": "Một bộ lọc ADC có mẫu sai lệch âm và một ngưỡng không dấu. Xác định kiểu của biểu thức trước khi kết luận."
     },
     {
       "id": 7,
@@ -1357,7 +1379,7 @@ window.COURSE = {
         "~ Không bao giờ làm thay đổi trạng thái các chân PB0..PB4."
       ],
       "problem": {
-        "scenario": "Trên bo mạch ATmega328P (Arduino Uno), chân PB5 nối LED báo trạng thái, còn chân PB0 và PB2 đang nối 2 relay đang BẬT (`PORTB = 0x05`). Hãy viết hàm `portb_set_pin(uint8_t pin, uint8_t state)` để bật (`state=1`) hoặc tắt (`state=0`) riêng chân `pin` được chỉ định mà TUYỆT ĐỐI không làm tắt 2 relay ở PB0 và PB2.",
+        "scenario": "PB5 điều khiển LED. Giả định DDRB5 đã bật. Chỉ đổi chốt PORTB ở vị trí được yêu cầu và giữ các đầu ra PORTB còn lại.\n\nTrên bo mạch ATmega328P (Arduino Uno), chân PB5 nối LED báo trạng thái, còn chân PB0 và PB2 đang nối 2 relay đang BẬT (`PORTB = 0x05`). Hãy viết hàm `portb_set_pin(uint8_t pin, uint8_t state)` để bật (`state=1`) hoặc tắt (`state=0`) riêng chân `pin` được chỉ định mà TUYỆT ĐỐI không làm tắt 2 relay ở PB0 và PB2.",
         "prototype": "void portb_set_pin(uint8_t pin, uint8_t state)",
         "workedExample": [
           "Bước 1: Cấu hình chân PB5 làm ngõ ra (Output) bằng cách bật bit 5 trong thanh ghi hướng DDRB. (Mask=0x20 (0010_0000), DDRB=0x20)",
@@ -1620,7 +1642,7 @@ window.COURSE = {
         "+ Ghi PINB = (1U << PB5) đảo PB5 chỉ tốn 1 chu kỳ xung."
       ],
       "problem": {
-        "scenario": "Viết hai hàm đảo bit PB5 trên ATmega328P. Hàm thứ nhất dùng XOR trên PORTB. Hàm thứ hai dùng tính năng ghi 1 vào bit tương ứng của PINB. PB5 thường nối với LED D13 trên Arduino Uno dùng ATmega328P. Hãy kiểm sơ đồ board.",
+        "scenario": "Với PB5 làm đầu ra, so sánh đảo bằng đọc–sửa–ghi PORTB và ghi mặt nạ vào PINB. Đo LED hoặc xem chốt PORTB sau mỗi lần.\n\nViết hai hàm đảo bit PB5 trên ATmega328P. Hàm thứ nhất dùng XOR trên PORTB. Hàm thứ hai dùng tính năng ghi 1 vào bit tương ứng của PINB. PB5 thường nối với LED D13 trên Arduino Uno dùng ATmega328P. Hãy kiểm sơ đồ board.",
         "prototype": "void toggle_pb5_xor(void); void toggle_pb5_hw(void);",
         "workedExample": [
           "Bước 1: Đặt chân PB5 làm ngõ ra (Output). (DDRB=0x20, PORTB=0x00)",
@@ -1841,7 +1863,7 @@ window.COURSE = {
         "+ PIND=0x00 (nhấn nút), k=2 → is_high = 0"
       ],
       "problem": {
-        "scenario": "Nút nhấn khẩn cấp (E-Stop) được nối vào chân PD2 (INT0) với điện trở kéo lên nội bộ (`INPUT_PULLUP`: chưa nhấn = HIGH, nhấn nối GND = LOW). Hãy viết hàm đọc chân thứ `k` của thanh ghi `PIND` và trả về đúng `1` (HIGH) hoặc `0` (LOW).",
+        "scenario": "PD2 nối nút xuống GND và có pull-up. Đọc PIND ở vị trí yêu cầu. Bit đọc bằng 0 khi nút PD2 được nhấn.\n\nNút nhấn khẩn cấp (E-Stop) được nối vào chân PD2 (INT0) với điện trở kéo lên nội bộ (`INPUT_PULLUP`: chưa nhấn = HIGH, nhấn nối GND = LOW). Hãy viết hàm đọc chân thứ `k` của thanh ghi `PIND` và trả về đúng `1` (HIGH) hoặc `0` (LOW).",
         "prototype": "uint8_t read_pind_bit(uint8_t k)",
         "workedExample": [
           "Bước 1: Đặt PD2 làm Input (DDRD. (PD2 Mode=INPUT_PULLUP, Chưa nhấn=PIND.2 = 1)",
@@ -2083,7 +2105,7 @@ window.COURSE = {
         "+ EIMSK=0x02, pos=0 → 0x03 (giữ nguyên INT1)"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Bật bit INT0 (bit 0) trong thanh ghi mặt nạ ngắt ngoài EIMSK (0x3D) của ATmega328P.",
+        "scenario": "Nút PD2 dùng INT0. Bật riêng bit INT0 của EIMSK. Cách chọn cạnh nằm ở EICRA và không thuộc thao tác mặt nạ này.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Bật bit INT0 (bit 0) trong thanh ghi mặt nạ ngắt ngoài EIMSK (0x3D) của ATmega328P.",
         "prototype": "void set_bit8_solve(void)",
         "workedExample": [
           "Bước 1: Đọc giá trị hiện tại của thanh ghi EIMSK (External Interrupt Mask Register, địa chỉ 0x3D). (EIMSK=0x00, INT0=Bit 0)",
@@ -2286,7 +2308,7 @@ window.COURSE = {
         "+ Tiết kiệm dòng khi gọi sleep_mode()"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Tắt bộ chuyển đổi ADC bằng cách xóa bit ADEN (bit 7) trong thanh ghi ADCSRA để tiết kiệm dòng điện trước khi vào chế độ Sleep.",
+        "scenario": "Sau khi lấy mẫu PC0, mô phỏng bỏ bit ADEN trong ADCSRA. Với thanh ghi thật, chú ý ADIF là cờ ghi 1 để xóa khi đọc–sửa–ghi.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Tắt bộ chuyển đổi ADC bằng cách xóa bit ADEN (bit 7) trong thanh ghi ADCSRA để tiết kiệm dòng điện trước khi vào chế độ Sleep.",
         "prototype": "void clear_bit8_solve(void)",
         "workedExample": [
           "Bước 1: Thanh ghi ADCSRA đang có ADEN=1 (bit 7) và ADPS2:0=111 (chia tần 128 cho thạch anh 16MHz → 125kHz). (ADCSRA=0x87, ADEN=Bit 7 = 1)",
@@ -2490,7 +2512,7 @@ window.COURSE = {
         "+ 0x02 ^ 0x40 = 0x42"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Đảo trạng thái bit thứ n trong thanh ghi 8-bit bằng toán tử XOR (`^=`).",
+        "scenario": "PD6 đang ở chế độ GPIO với DDRD6 bằng 1. Đảo chốt PORTD6, giữ các bit khác. Xác nhận bộ PWM không chiếm chân.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Đảo trạng thái bit thứ n trong thanh ghi 8-bit bằng toán tử XOR (`^=`).",
         "prototype": "void toggle_bit8_solve(void)",
         "workedExample": [
           "Bước 1: Giá trị ban đầu của thanh ghi PORTD là 0x42 (0b0100_0010). (reg=0x42, PD6=1)",
@@ -2676,7 +2698,7 @@ window.COURSE = {
         "+ UCSR0A=0x00 → ready=0 → tiếp tục chờ"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Kiểm tra cờ UDRE0 (bit 5 của UCSR0A) để biết bộ đệm phát UART đã trống hay chưa trước khi ghi ký tự vào UDR0.",
+        "scenario": "Trước khi ghi UDR0, đọc UDRE0 trong UCSR0A. UDRE0 báo bộ đệm ghi còn chỗ, còn TXC0 báo khung đã truyền xong.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Kiểm tra cờ UDRE0 (bit 5 của UCSR0A) để biết bộ đệm phát UART đã trống hay chưa trước khi ghi ký tự vào UDR0.",
         "prototype": "void is_bit_set_solve(void)",
         "workedExample": [
           "Bước 1: Đọc thanh ghi trạng thái UCSR0A (0xC0). (UCSR0A=0x20, UDRE0=Bit 5)",
@@ -2821,7 +2843,7 @@ window.COURSE = {
         "- (1 << 23) trên avr-gcc → cảnh báo left shift count >= width of type!"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Thao tác trên biến trạng thái 32-bit (uint32_t) trên ATmega328P — nhấn mạnh tầm quan trọng bắt buộc của hậu tố `1UL << n`!",
+        "scenario": "Dùng từ cấu hình 32 bit trong SRAM để lưu các cờ cần áp dụng lần lượt cho PORTB/C/D. Chỉ đặt các bit được yêu cầu trong từ phần mềm.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Thao tác trên biến trạng thái 32-bit (uint32_t) trên ATmega328P — nhấn mạnh tầm quan trọng bắt buộc của hậu tố `1UL << n`!",
         "prototype": "void set_bit32_solve(void)",
         "workedExample": [
           "Bước 1: Trên AVR 8-bit, biến uint32_t chiếm 4 byte liên tiếp trong SRAM (hoặc 4 thanh ghi R22. (flags=0x00000000, Kích thước=4 byte (32-bit))",
@@ -2981,7 +3003,7 @@ window.COURSE = {
         "+ x=0x00 → 0x00"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Từ một thanh ghi 8-bit chứa nhiều cờ ngắt/tác vụ đang chờ (pending mask), chỉ giữ lại bit 1 có trọng số cao nhất (MSB).",
+        "scenario": "Dùng từ cờ sự kiện phần mềm, chẳng hạn bộ đệm UART, nút PD2 và timer. Tìm bit cao nhất theo quy ước của ứng dụng. Ưu tiên ngắt thật theo bảng vector.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Từ một thanh ghi 8-bit chứa nhiều cờ ngắt/tác vụ đang chờ (pending mask), chỉ giữ lại bit 1 có trọng số cao nhất (MSB).",
         "prototype": "void highest_bit_solve(void)",
         "workedExample": [
           "Bước 1: Giả sử có 3 sự kiện cùng chờ ở bit 5, 3, 2. (x ban đầu=0x2C, MSB đang bật=Bit 5 (0x20))",
@@ -3215,7 +3237,7 @@ window.COURSE = {
         "+ CLR_BIT(PORTB, 3) → 0x00"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Xây dựng bộ macro dùng lại được trên toàn bộ dự án ATmega328P với ngoặc đơn bảo vệ toán hạng chuẩn MISRA C.",
+        "scenario": "Áp dụng macro với DDRB và PORTB để đặt PB3. Kiểm ngoặc quanh đối số và chỉ dùng thao tác đọc–sửa–ghi trên thanh ghi có ngữ nghĩa phù hợp.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Xây dựng bộ macro dùng lại được trên toàn bộ dự án ATmega328P với ngoặc đơn bảo vệ toán hạng chuẩn MISRA C.",
         "prototype": "void bit_macros_solve(void)",
         "workedExample": [
           "Bước 1: Macro bật bit: BẮT BUỘC bọc ngoặc đơn quanh `REG`, `BIT` và toàn bộ biểu thức để tránh lỗi thứ tự ưu tiên toán tử khi truyền biểu thức như `BIT = i + 1`. (Macro=SET_BIT, An toàn ngoặc=Đạt chuẩn)",
@@ -3424,7 +3446,7 @@ window.COURSE = {
         "+ SREG=0x84 → N, I"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Giải mã từng bit của thanh ghi SREG (0x3F) trên ATmega328P để in ra cửa sổ UART Debug tên các cờ đang bật.",
+        "scenario": "Chụp một byte SREG vào SRAM để debugger quan sát. Giải từng bit thành tên cờ. Giá trị cờ phụ thuộc lệnh máy tại điểm chụp.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Giải mã từng bit của thanh ghi SREG (0x3F) trên ATmega328P để in ra cửa sổ UART Debug tên các cờ đang bật.",
         "prototype": "void decode_sreg_solve(void)",
         "workedExample": [
           "Bước 1: Đọc thanh ghi trạng thái CPU SREG (địa chỉ I/O 0x3F). (SREG=0x83, Các cờ bật=I, Z, C)",
@@ -3630,7 +3652,7 @@ window.COURSE = {
         "+ 0xFF → 0x5555"
       ],
       "problem": {
-        "scenario": "Khi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Tách 8 bit của một byte `0babcdefgh` thành 16-bit có bit 0 xen kẽ `0b0a0b0c0d0e0f0g0h` (dùng trong mã hóa tín hiệu Manchester / đồ họa OLED).",
+        "scenario": "Đóng gói mẫu 8 bit trước khi gửi từ USART0. Gắn bit nguồn vào các vị trí chẵn của từ 16 bit đã quy ước trong giao thức.\n\nKhi lập trình bare-metal cho ATmega328P, bạn phải điều khiển chính xác từng bit của thanh ghi ngoại vi (8-bit/32-bit) mà không làm nhiễu các chân/cờ lân cận. Bài toán thực tế: Tách 8 bit của một byte `0babcdefgh` thành 16-bit có bit 0 xen kẽ `0b0a0b0c0d0e0f0g0h` (dùng trong mã hóa tín hiệu Manchester / đồ họa OLED).",
         "prototype": "void bit_spread_solve(void)",
         "workedExample": [
           "Bước 1: Nạp dữ liệu vào uint16_t để có đủ không gian giãn rộng gấp đôi số bit. (x ban đầu=0x000D (1101), Mục tiêu=0x0055 (0101_0101))",
@@ -3814,7 +3836,7 @@ window.COURSE = {
         "+ TCCR0B=0x09 (WGM02=1, CS=1) → MODIFY_REG(...,0x07,0x03) → 0x0B (WGM02 vẫn = 1)"
       ],
       "problem": {
-        "scenario": "Viết macro MODIFY_REG(REG, MASK, VAL) để cập nhật trường bộ chia Timer0. Thử với biến mô phỏng timer_control trước. Nếu chuyển sang thanh ghi thật, đọc datasheet về các bit FOC0A/FOC0B và kiểm truy cập từ ISR.",
+        "scenario": "Thay các bit CS02:0 của TCCR0B bằng cấu hình prescaler mới. Giữ WGM02. Tính trên bản sao trước khi cân nhắc ghi thanh ghi thật.\n\nViết macro MODIFY_REG(REG, MASK, VAL) để cập nhật trường bộ chia Timer0. Thử với biến mô phỏng timer_control trước. Nếu chuyển sang thanh ghi thật, đọc datasheet về các bit FOC0A/FOC0B và kiểm truy cập từ ISR.",
         "prototype": "void reg_helper_solve(void)",
         "workedExample": [
           "Bước 1: Macro chuẩn công nghiệp (giống HAL/CMSIS): xóa sạch vùng bit trong MASK rồi OR giá trị mới VAL vào, đảm bảo VAL không tràn ra ngoài MASK. (Macro=MODIFY_REG, An toàn=Bảo vệ bởi MASK)",
@@ -3926,10 +3948,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Datasheet ATmega328P quy định ghi 1 vào bit tương ứng của thanh ghi PINx sẽ tự động đảo bit ở PORTx."
+        },
+        {
+          "q": "PORTB = 0x05. Đặt riêng PB5 cho kết quả gì?",
+          "opts": [
+            "0x05",
+            "0x20",
+            "0x25"
+          ],
+          "ans": 2,
+          "exp": "OR với 0x20 giữ PB0 và PB2."
         }
       ],
       "remember": "Ghi nhớ bộ tứ: Set `|=`, Clear `&= ~`, Toggle `^=`, Check `&`.",
-      "pitfall": "Không bao giờ dùng `PINB |= ...` khi muốn dùng tính năng hardware toggle!"
+      "pitfall": "Không bao giờ dùng `PINB |= ...` khi muốn dùng tính năng hardware toggle!",
+      "avrContext": "Hình dung từng đầu ra trên PORTB: việc đặt, xóa và đảo cần giữ các chân không thuộc mặt nạ."
     },
     {
       "id": 21,
@@ -3979,10 +4012,21 @@ window.COURSE = {
           ],
           "ans": 2,
           "exp": "XOR với 0xFF đảo toàn bộ 8 bit: 0101_0101 → 1010_1010 (0xAA)."
+        },
+        {
+          "q": "Muốn đặt PD6 làm đầu ra mà giữ hướng các chân khác, chọn lệnh nào?",
+          "opts": [
+            "DDRD |= (1U << 6)",
+            "DDRD = (1U << 6)",
+            "PORTD |= (1U << 6)"
+          ],
+          "ans": 0,
+          "exp": "DDRD chọn hướng và OR giữ bit khác."
         }
       ],
       "remember": "Luôn đặt ngoặc đơn quanh phép toán bitwise khi kết hợp với `==` hoặc `!=`.",
-      "pitfall": "Toán tử so sánh (`==`, `!=`) có độ ưu tiên cao hơn toán tử bitwise (`&`, `^`, `|`)!"
+      "pitfall": "Toán tử so sánh (`==`, `!=`) có độ ưu tiên cao hơn toán tử bitwise (`&`, `^`, `|`)!",
+      "avrContext": "Trước khi áp dụng macro lên DDRB/PORTB, khai triển nó ra để kiểm thứ tự tính và số lần đánh giá đối số."
     },
     {
       "id": 22,
@@ -4032,10 +4076,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "`x & (x - 1)` xóa đi bit 1 nằm ngoài cùng bên phải (Brian Kernighan's trick)."
+        },
+        {
+          "q": "SREG = 0x82 thì cờ nào bật?",
+          "opts": [
+            "I và C",
+            "I và Z",
+            "T và N"
+          ],
+          "ans": 1,
+          "exp": "I ở bit 7, Z ở bit 1."
         }
       ],
       "remember": "Với thanh ghi cờ ngắt AVR (TIFR0, EIFR, ADIF): ghi trực tiếp `TIFR0 = (1U << TOV0);` chứ không dùng `|=`!",
-      "pitfall": "Dùng `|=` trên TIFR0 sẽ đọc lại các cờ khác đang là 1 và ghi 1 lại vào chúng → vô tình xóa mất các cờ ngắt khác!"
+      "pitfall": "Dùng `|=` trên TIFR0 sẽ đọc lại các cờ khác đang là 1 và ghi 1 lại vào chúng → vô tình xóa mất các cờ ngắt khác!",
+      "avrContext": "Đọc một ảnh chụp thanh ghi AVR. Tách thông tin vị trí bit khỏi giá trị thập phân để kiểm phép biến đổi."
     },
     {
       "id": 23,
@@ -4149,7 +4204,7 @@ window.COURSE = {
         "+ 0xF3 → hi=0x0F, lo=0x03"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Tách 4 bit cao (high nibble) và 4 bit thấp (low nibble) của một ký tự ASCII để gửi ra chân PD4..PD7 của LCD 16x2.",
+        "scenario": "LCD 4 bit nhận hai nửa của một byte. Chuẩn bị nibble cao trước, rồi nibble thấp để driver ánh xạ lên các chân dữ liệu.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Tách 4 bit cao (high nibble) và 4 bit thấp (low nibble) của một ký tự ASCII để gửi ra chân PD4..PD7 của LCD 16x2.",
         "prototype": "void nibble_solve(void)",
         "workedExample": [
           "Bước 1: Ký tự 'A' có mã ASCII 0x41: nibble cao = 0x4 (0100), nibble thấp = 0x1 (0001). (ch=0x41 ('A'), High Nibble=0x4)",
@@ -4302,7 +4357,7 @@ window.COURSE = {
         "+ REFS0(6) | MUX1(1) | MUX0(0) = 0x43"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Bật đồng thời điện áp tham chiếu AVcc (REFS0=1) và chọn kênh ADC3 (MUX1=1, MUX0=1) trong thanh ghi ADMUX.",
+        "scenario": "Thử trên bản sao ADMUX. Xác định trường REFS và MUX cho tham chiếu AVcc và ADC3. Khi đổi kênh cũ, xóa nhóm MUX trước khi đặt giá trị mới.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Bật đồng thời điện áp tham chiếu AVcc (REFS0=1) và chọn kênh ADC3 (MUX1=1, MUX0=1) trong thanh ghi ADMUX.",
         "prototype": "void set_multibits_solve(void)",
         "workedExample": [
           "Bước 1: Thanh ghi ADMUX (0x7C) điều khiển điện áp tham chiếu (REFS1:0) và kênh đầu vào analog (MUX3:0). (ADMUX=0x00, Kênh mục tiêu=ADC3 + AVcc)",
@@ -4473,7 +4528,7 @@ window.COURSE = {
         "+ pkt=0x0001A340, pos=12, len=5 → 0x1A (26)"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Trích xuất trường 5-bit bắt đầu từ vị trí bit 12 trong một gói trạng thái 32-bit bằng `(reg >> pos) & ((1UL << len) - 1)`.",
+        "scenario": "USART0 nhận một khung phần mềm 32 bit. Trích trường dữ liệu theo vị trí trong đề, sau khi đã ghép byte theo giao thức.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Trích xuất trường 5-bit bắt đầu từ vị trí bit 12 trong một gói trạng thái 32-bit bằng `(reg >> pos) & ((1UL << len) - 1)`.",
         "prototype": "void extract_bf32_solve(void)",
         "workedExample": [
           "Bước 1: Gói dữ liệu 32-bit nhận qua SPI/UART từ cảm biến. (pkt=0x0001A340, pos / len=12 / 5 bit)",
@@ -4627,7 +4682,7 @@ window.COURSE = {
         "+ 0x00FF1234 clear(pos=8, len=4) → 0x00FF1034"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Xóa sạch `len` bit kể từ vị trí `pos` trong biến `uint32_t` mà không ảnh hưởng các trường lân cận.",
+        "scenario": "Trong bản chụp cấu hình 32 bit lưu SRAM, xóa riêng trường chưa dùng trước khi gửi UART. Không ghi trực tiếp từ 32 bit vào thanh ghi AVR.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Xóa sạch `len` bit kể từ vị trí `pos` trong biến `uint32_t` mà không ảnh hưởng các trường lân cận.",
         "prototype": "void clear_bf32_solve(void)",
         "workedExample": [
           "Bước 1: Cần xóa 4 bit tại vị trí 8. (reg cũ=0x00FF1234, Vùng xóa=bit 8..11)",
@@ -4776,7 +4831,7 @@ window.COURSE = {
         "+ 0x1234 replace(pos=8,len=4,val=0xB) → 0x1B34"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Ghi giá trị mới `val` vào một trường bit bất kỳ mà không để giá trị cũ trộn lẫn với giá trị mới.",
+        "scenario": "Thay một trường trong bản cấu hình lưu SRAM. Chọn ca mà bit cũ bằng 1 và bit mới bằng 0 để phát hiện cách làm chỉ dùng OR.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Ghi giá trị mới `val` vào một trường bit bất kỳ mà không để giá trị cũ trộn lẫn với giá trị mới.",
         "prototype": "void replace_bf32_solve(void)",
         "workedExample": [
           "Bước 1: Muốn thay nibble tại bit 8. (reg cũ=0x1234, val mới=0xB)",
@@ -4902,7 +4957,7 @@ window.COURSE = {
         "+ 0xAA & 0x55 = 0x00"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Lọc lấy tất cả các bit ở vị trí chẵn bằng mặt nạ 0x55555555UL.",
+        "scenario": "Mô hình khung chứa ký hiệu tại các vị trí chẵn. Tách các bit ấy bằng mặt nạ, giữ nguyên vị trí của chúng trong kết quả.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Lọc lấy tất cả các bit ở vị trí chẵn bằng mặt nạ 0x55555555UL.",
         "prototype": "void even_bits_solve(void)",
         "workedExample": [
           "Bước 1: Xét byte thấp 0xF5 = 0b1111_0101. (reg=0xF5, Mask chẵn=0x55555555UL)",
@@ -5095,7 +5150,7 @@ window.COURSE = {
         "+ 16MHz, 2400 → UBRR0=416 (H=0x01, L=0xA0)"
       ],
       "problem": {
-        "scenario": "Bạn đang khởi tạo giao tiếp USART0 trên ATmega328P (thạch anh `F_CPU = 16 MHz`) để truyền dữ liệu cảm biến lên máy tính ở tốc độ `9600 bps` (chế độ thường `U2X0 = 0`). Hãy viết hàm tính giá trị 12-bit `UBRR0` và ghi đúng thứ tự vào hai thanh ghi phần cứng `UBRR0H` (4 bit cao) và `UBRR0L` (8 bit thấp).",
+        "scenario": "Với clock 16 MHz và U2X0 bằng 0, kiểm UBRR0 cho 9600 baud. Tách giá trị phù hợp vào UBRR0H và UBRR0L.\n\nBạn đang khởi tạo giao tiếp USART0 trên ATmega328P (thạch anh `F_CPU = 16 MHz`) để truyền dữ liệu cảm biến lên máy tính ở tốc độ `9600 bps` (chế độ thường `U2X0 = 0`). Hãy viết hàm tính giá trị 12-bit `UBRR0` và ghi đúng thứ tự vào hai thanh ghi phần cứng `UBRR0H` (4 bit cao) và `UBRR0L` (8 bit thấp).",
         "prototype": "void usart0_set_baud(uint32_t baud)",
         "workedExample": [
           "Bước 1: Khai báo tần số thạch anh 16 MHz và tốc độ truyền UART 9600 bps (chuẩn 8N1). (F_CPU=16 MHz, BAUD=9600 bps)",
@@ -5263,7 +5318,7 @@ window.COURSE = {
         "+ cmd=0xA, payload=0x5 → frame=0xA5"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đóng gói 4-bit địa chỉ lệnh (CMD) và 4-bit dữ liệu (DATA) vào 1 byte rồi kiểm tra cờ TX để truyền qua UDR0.",
+        "scenario": "Tạo byte lệnh và payload theo định dạng đề. Driver UART/SPI gửi byte đã đóng gói sau khi ngoại vi báo sẵn sàng.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đóng gói 4-bit địa chỉ lệnh (CMD) và 4-bit dữ liệu (DATA) vào 1 byte rồi kiểm tra cờ TX để truyền qua UDR0.",
         "prototype": "void data_tx_solve(void)",
         "workedExample": [
           "Bước 1: Lệnh 4-bit `cmd = 1010` và dữ liệu 4-bit `payload = 0101`. (cmd=0xA (4-bit), payload=0x5 (4-bit))",
@@ -5399,7 +5454,7 @@ window.COURSE = {
         "+ mode=5, presc=3, duty=512 → 0xAE00"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đóng gói 3 trường cấu hình: Mode (3-bit), Prescaler (3-bit) và Duty Cycle (10-bit) vào 1 từ 16-bit duy nhất.",
+        "scenario": "Đóng gói mode, prescaler và duty thành từ cấu hình trong SRAM. Khi áp dụng thật, giải mã các trường rồi ghi đúng thanh ghi Timer1.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đóng gói 3 trường cấu hình: Mode (3-bit), Prescaler (3-bit) và Duty Cycle (10-bit) vào 1 từ 16-bit duy nhất.",
         "prototype": "void pack_16bit_solve(void)",
         "workedExample": [
           "Bước 1: mode (bit 15. (mode=5 (101), presc=3 (011))",
@@ -5548,7 +5603,7 @@ window.COURSE = {
         "+ 0x000FABCD → 0x0000ABCD"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đọc trường bộ đếm 4-bit (bit 16..19) trong biến 32-bit, cộng thêm 1 (modulo 16), rồi ghi ngược lại không làm hỏng 28 bit kia.",
+        "scenario": "Tăng một trường đếm trong gói trạng thái gửi USART0. Kiểm trường đầy và xác định hành vi theo mặt nạ đề cho.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đọc trường bộ đếm 4-bit (bit 16..19) trong biến 32-bit, cộng thêm 1 (modulo 16), rồi ghi ngược lại không làm hỏng 28 bit kia.",
         "prototype": "void extract_mod32_solve(void)",
         "workedExample": [
           "Bước 1: Nibble tại bit 16. (reg cũ=0x0005ABCD, Field[19:16]=5)",
@@ -5706,7 +5761,7 @@ window.COURSE = {
         "+ 0x03A5 → adc10=933 → adc8=233"
       ],
       "problem": {
-        "scenario": "Các thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đọc thanh ghi 16-bit `ADC` (ghép ADCL + ADCH) và trích xuất đúng 10 bit kết quả (0..1023) hoặc 8 bit cao khi dùng chế độ canh trái ADLAR.",
+        "scenario": "Với ADLAR bằng 0, bản sao kết quả ADC 10 bit nằm ở 10 bit thấp. Khi cần đọc cả cặp trên chip, đọc ADCL trước ADCH.\n\nCác thanh ghi cấu hình ngoại vi trên ATmega328P (`ADMUX`, `TCCR0B`, `UBRR0`, khung dữ liệu SPI/UART) gom nhiều trường bit vào chung 1 thanh ghi. Nhiệm vụ của bạn: Đọc thanh ghi 16-bit `ADC` (ghép ADCL + ADCH) và trích xuất đúng 10 bit kết quả (0..1023) hoặc 8 bit cao khi dùng chế độ canh trái ADLAR.",
         "prototype": "void extract_bf16_solve(void)",
         "workedExample": [
           "Bước 1: Thanh ghi `ADC` của ATmega328P chứa 10 bit chuyển đổi nằm ở bit 9. (ADC raw=0x03A5 (933), Độ phân giải=10-bit (0..1023))",
@@ -5802,10 +5857,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "UBRR0 = 16,000,000 / (16 * 9600) - 1 = 103.16 → 103."
+        },
+        {
+          "q": "ADLAR = 0, ADCH = 0x02 và ADCL = 0xA5. Mã ADC là gì?",
+          "opts": [
+            "0x00A5",
+            "0xA502",
+            "0x02A5"
+          ],
+          "ans": 2,
+          "exp": "Ghép bằng dịch byte cao 8 bit rồi OR byte thấp."
         }
       ],
       "remember": "Clear-then-Set là quy tắc vàng khi cập nhật bất kỳ bitfield nào.",
-      "pitfall": "Không bao giờ dùng mỗi `|=` để đổi chế độ/kênh khi bit cũ có thể đang là 1!"
+      "pitfall": "Không bao giờ dùng mỗi `|=` để đổi chế độ/kênh khi bit cũ có thể đang là 1!",
+      "avrContext": "Phân biệt vị trí bit của kết quả ADC với vị trí nibble của byte trên khung UART. Dự đoán bước dịch và mặt nạ."
     },
     {
       "id": 35,
@@ -5855,10 +5921,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "0x3A5 >> 4 = 0x3A; 0x3A & 0x0F = 0x0A (10)."
+        },
+        {
+          "q": "Gói cấu hình 32 bit của Timer1 nằm ở đâu trước khi giải mã?",
+          "opts": [
+            "Biến trong SRAM",
+            "Thanh ghi Timer1 32 bit",
+            "SREG"
+          ],
+          "ans": 0,
+          "exp": "Timer1 có thanh ghi 16 bit, còn gói này là dữ liệu phần mềm."
         }
       ],
       "remember": "Với 16-bit Timer/ADC trên AVR: Ghi High trước Low sau; Đọc Low trước High sau.",
-      "pitfall": "Truy cập thanh ghi 16-bit từ cả main và ISR cần bảo vệ bằng `ATOMIC_BLOCK`."
+      "pitfall": "Truy cập thanh ghi 16-bit từ cả main và ISR cần bảo vệ bằng `ATOMIC_BLOCK`.",
+      "avrContext": "Phân biệt thanh ghi Timer1 16 bit với từ 32 bit do firmware tạo trong SRAM. Xét thứ tự truy cập khi có ISR."
     },
     {
       "id": 36,
@@ -5967,7 +6044,7 @@ window.COURSE = {
         "+ 0xFFFF → cnt=16"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Dùng thuật toán Brian Kernighan `n &= (n - 1)` để đếm số bit 1 nhanh gấp nhiều lần vòng lặp 16 bước trên ATmega328P.",
+        "scenario": "Ảnh chụp các công tắc có thể chứa nhiều bit 1. Đếm số bit 1 để tính parity trước khi đưa vào khung UART.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Dùng thuật toán Brian Kernighan `n &= (n - 1)` để đếm số bit 1 nhanh gấp nhiều lần vòng lặp 16 bước trên ATmega328P.",
         "prototype": "void popcount16_solve(void)",
         "workedExample": [
           "Bước 1: 0x00A5 = 0b1010_0101 có đúng 4 bit 1. (n=0x00A5, cnt=0)",
@@ -6152,7 +6229,7 @@ window.COURSE = {
         "+ ROL(0x81, 4) = 0x18"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Xoay vòng các bit sang trái: bit 7 đẩy ra ngoài sẽ vòng lại vào bit 0 (`(reg << k) | (reg >> (8 - k))`).",
+        "scenario": "Chuẩn bị mẫu LED đuổi cho PORTD bằng xoay vòng. Chỉ dùng toàn bộ PORTD nếu phần cứng dành cả cổng cho LED.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Xoay vòng các bit sang trái: bit 7 đẩy ra ngoài sẽ vòng lại vào bit 0 (`(reg << k) | (reg >> (8 - k))`).",
         "prototype": "void rol8_solve(void)",
         "workedExample": [
           "Bước 1: Thanh ghi PORTD đang có bit 7 và bit 0 bật. (reg=0x81, k=1 vị trí)",
@@ -6323,7 +6400,7 @@ window.COURSE = {
         "+ ROR32(0x12345678, 4) = 0x81234567"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Xoay phải biến 32-bit `k` vị trí an toàn (kể cả khi `k = 0` hoặc `k >= 32`).",
+        "scenario": "Xoay một từ 32 bit lưu trong SRAM trước khi tuần tự hóa sang USART0. Tách phép xoay khỏi thứ tự gửi byte.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Xoay phải biến 32-bit `k` vị trí an toàn (kể cả khi `k = 0` hoặc `k >= 32`).",
         "prototype": "void ror32_solve(void)",
         "workedExample": [
           "Bước 1: Xoay phải 4 bit (1 nibble): nibble thấp nhất `8` sẽ vòng lên thành nibble cao nhất!. (x cũ=0x12345678, k=4)",
@@ -6473,7 +6550,7 @@ window.COURSE = {
         "+ reg=0xAA, pat=0x0F → found=0"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Kiểm tra xem một mẫu 8-bit `pat` có phải là phiên bản xoay vòng của `reg` hay không bằng cách nhân đôi `reg` thành 16-bit!",
+        "scenario": "Firmware nhận một mẫu 8 bit và chưa biết pha bắt đầu. Thử các phép xoay để tìm mẫu khớp trước khi xử lý khung.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Kiểm tra xem một mẫu 8-bit `pat` có phải là phiên bản xoay vòng của `reg` hay không bằng cách nhân đôi `reg` thành 16-bit!",
         "prototype": "void circular_match_solve(void)",
         "workedExample": [
           "Bước 1: Khi xoay 0xC3 sang phải 2 bit, 2 bit 1 ở đầu nối liền 2 bit 1 ở cuối tạo thành 0x0F!. (reg=0xC3, pat=0x0F)",
@@ -6632,7 +6709,7 @@ window.COURSE = {
         "+ 0xFF → 4 + 4 = 8"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Dùng bảng tra 16 phần tử (Nibble LUT) lưu trong bộ nhớ Flash `PROGMEM` của ATmega328P để đếm bit 1 trong O(1) mà không tốn 1 byte SRAM nào!",
+        "scenario": "Bảng đếm bit của mỗi nibble nằm trong Flash. Đọc đúng API PROGMEM để lấy hai kết quả rồi cộng.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Dùng bảng tra 16 phần tử (Nibble LUT) lưu trong bộ nhớ Flash `PROGMEM` của ATmega328P để đếm bit 1 trong O(1) mà không tốn 1 byte SRAM nào!",
         "prototype": "void popcount8_lut_solve(void)",
         "workedExample": [
           "Bước 1: Từ khóa `PROGMEM` (<avr/pgmspace. (Vùng nhớ=Flash PROGMEM, Tốn SRAM=0 byte!)",
@@ -6764,7 +6841,7 @@ window.COURSE = {
         "+ 0 → 0"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Kiểm tra kích thước bộ đệm (ví dụ 16, 32, 64 byte) có phải lũy thừa của 2 không để dùng phép `& (SIZE - 1)` thay cho phép chia `% SIZE` cực chậm trên AVR.",
+        "scenario": "Kiểm kích thước hàng đợi UART trước khi dùng capacity - 1 làm mặt nạ quấn vòng. Loại 0.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Kiểm tra kích thước bộ đệm (ví dụ 16, 32, 64 byte) có phải lũy thừa của 2 không để dùng phép `& (SIZE - 1)` thay cho phép chia `% SIZE` cực chậm trên AVR.",
         "prototype": "void pow2_solve(void)",
         "workedExample": [
           "Bước 1: ATmega328P không có lệnh chia phần cứng (DIV). (buf_size=64 (0x40), buf_size - 1=63 (0x3F))",
@@ -6945,7 +7022,7 @@ window.COURSE = {
         "+ 0x80 → 0x01"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Đảo ngược vị trí 8 bit (bit 7↔0, 6↔1, 5↔2, 4↔3) trong O(1) không cần vòng lặp.",
+        "scenario": "Đảo thứ tự bit trong byte lưu SRAM trước khi thử gửi SPI. Phân biệt biến đổi dữ liệu với cài đặt DORD của SPCR.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Đảo ngược vị trí 8 bit (bit 7↔0, 6↔1, 5↔2, 4↔3) trong O(1) không cần vòng lặp.",
         "prototype": "void bit_reverse_solve(void)",
         "workedExample": [
           "Bước 1: Byte đầu vào 0b1011_0100. (x ban đầu=0xB4 (1011_0100), Kỳ vọng=0x2D (0010_1101))",
@@ -7095,7 +7172,7 @@ window.COURSE = {
         "+ 0x5555 → 0xFF"
       ],
       "problem": {
-        "scenario": "Trên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Quá trình ngược lại của Bit Spreading: gom các bit ở vị trí chẵn (0, 2, 4, 6) của 16-bit thành 1 byte liên tiếp.",
+        "scenario": "Nén các bit nguồn ở vị trí chẵn từ từ dữ liệu nhận vào SRAM. Nghĩ rõ bit nguồn i sẽ vào bit đích nào.\n\nTrên vi điều khiển 8-bit ATmega328P không có lệnh chia phần cứng và tài nguyên Flash/SRAM hạn chế, kỹ thuật xoay/đếm/đảo bit giúp xử lý tín hiệu SPI, Encoder và tối ưu Ring Buffer cực nhanh. Bài toán: Quá trình ngược lại của Bit Spreading: gom các bit ở vị trí chẵn (0, 2, 4, 6) của 16-bit thành 1 byte liên tiếp.",
         "prototype": "void compress_bits_solve(void)",
         "workedExample": [
           "Bước 1: Đầu vào 0x0051 có các bit chẵn (6,4,2,0) là 1, 1, 0, 1 → nén lại phải ra 0x0D (1101). (x vào=0x0051, Kỳ vọng=0x000D)",
@@ -7194,10 +7271,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Phải loại trừ `n == 0` vì 0 không phải lũy thừa của 2."
+        },
+        {
+          "q": "Xoay trái mẫu LED 0x81 đúng một bit trong 8 bit cho gì?",
+          "opts": [
+            "0x02",
+            "0x03",
+            "0xC0"
+          ],
+          "ans": 1,
+          "exp": "Bit 7 quay về bit 0."
         }
       ],
       "remember": "Ring buffer kích thước 2^k giúp thay `%` bằng `& (SIZE - 1)` cực nhanh trên AVR.",
-      "pitfall": "Đừng quên xử lý trường hợp biên `k = 0` khi xoay vòng!"
+      "pitfall": "Đừng quên xử lý trường hợp biên `k = 0` khi xoay vòng!",
+      "avrContext": "Dùng mẫu LED và dung lượng FIFO UART để tự kiểm phép xoay, đếm bit và nhận dạng lũy thừa."
     },
     {
       "id": 45,
@@ -7248,10 +7336,21 @@ window.COURSE = {
           ],
           "ans": 0,
           "exp": "Đảo ngược 0000_1111 thành 1111_0000 = 0xF0."
+        },
+        {
+          "q": "DORD trong SPCR chọn điều gì?",
+          "opts": [
+            "Tốc độ UART",
+            "Thứ tự lưu byte trong SRAM",
+            "Thứ tự phát bit của SPI"
+          ],
+          "ans": 2,
+          "exp": "DORD chọn thứ tự bit trên SPI trong mỗi byte."
         }
       ],
       "remember": "Đặt bảng tra hằng số vào Flash bằng `PROGMEM` giúp bảo vệ 2 KB SRAM quý giá của ATmega328P.",
-      "pitfall": "Truy cập thẳng mảng `PROGMEM` bằng toán tử `[]` sẽ đọc nhầm địa chỉ trong SRAM!"
+      "pitfall": "Truy cập thẳng mảng `PROGMEM` bằng toán tử `[]` sẽ đọc nhầm địa chỉ trong SRAM!",
+      "avrContext": "Phân biệt bảng đếm bit trong Flash với byte gửi SPI và thứ tự bit trên đường truyền."
     },
     {
       "id": 46,
@@ -7438,7 +7537,7 @@ window.COURSE = {
         "- {0xAA,0x11,0x25,0x9F} → valid=0"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tính tổng XOR (hoặc Sum mod 256) các byte payload trong mảng SRAM và đối chiếu với byte Checksum cuối gói tin.",
+        "scenario": "USART0 chuyển byte khung vào SRAM. Tính checksum trên đúng đoạn dữ liệu theo đề và kiểm cả khung sai.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tính tổng XOR (hoặc Sum mod 256) các byte payload trong mảng SRAM và đối chiếu với byte Checksum cuối gói tin.",
         "prototype": "void checksum_solve(void)",
         "workedExample": [
           "Bước 1: Gói tin 4 byte lưu tại SRAM 0x0100. (SRAM=0x0100..0x0103, Checksum gửi=0x9F)",
@@ -7671,7 +7770,7 @@ window.COURSE = {
         "+ {10,20,30,40} → {40,30,20,10}"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Đảo ngược mảng bằng kỹ thuật 2 chỉ số đầu-cuối (`l`, `r`) mà không cấp phát mảng phụ trên SRAM.",
+        "scenario": "Đảo thứ tự mẫu lấy gần đây ngay trong mảng SRAM của ATmega328P. Thử mảng lẻ để kiểm phần tử ở giữa.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Đảo ngược mảng bằng kỹ thuật 2 chỉ số đầu-cuối (`l`, `r`) mà không cấp phát mảng phụ trên SRAM.",
         "prototype": "void rev_array_solve(void)",
         "workedExample": [
           "Bước 1: Mảng 4 phần tử trong SRAM (0x0100. (a[]=[10, 20, 30, 40], SRAM phụ=1 byte (tmp))",
@@ -7967,7 +8066,7 @@ window.COURSE = {
         "+ {1,2,3,4,5}, k=2 → {3,4,5,1,2}"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Xoay trái mảng `a[n]` đi `k` vị trí tại chỗ (O(1) RAM) bằng 3 bước đảo đoạn: đảo `[0..k-1]`, đảo `[k..n-1]`, đảo `[0..n-1]`.",
+        "scenario": "Sắp lại thứ tự một cửa sổ mẫu đang lưu trong SRAM theo K. Kiểm n khác 0 trước khi lấy modulo K theo n.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Xoay trái mảng `a[n]` đi `k` vị trí tại chỗ (O(1) RAM) bằng 3 bước đảo đoạn: đảo `[0..k-1]`, đảo `[k..n-1]`, đảo `[0..n-1]`.",
         "prototype": "void rotate_arr_solve(void)",
         "workedExample": [
           "Bước 1: Cần xoay trái 2 vị trí → kết quả kỳ vọng `{3, 4, 5, 1, 2}`. (a[]=[1,2,3,4,5], k=2)",
@@ -8158,7 +8257,7 @@ window.COURSE = {
         "+ {1,3,2,3,0} → dup = 3"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tìm ID trùng lặp bằng mảng đánh dấu Bitset (1 byte chứa 8 cờ) thay vì mảng bool 8 byte, tiết kiệm 8x SRAM.",
+        "scenario": "Bảng ID phần mềm của các thiết bị trên TWI phải không trùng. Miền 0..n-1 của bài là chỉ số ứng dụng, không phải dải địa chỉ I2C.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tìm ID trùng lặp bằng mảng đánh dấu Bitset (1 byte chứa 8 cờ) thay vì mảng bool 8 byte, tiết kiệm 8x SRAM.",
         "prototype": "void find_dup_solve(void)",
         "workedExample": [
           "Bước 1: Dùng 1 biến `uint8_t seen_mask` (8 bit) làm bảng băm siêu gọn cho các ID từ 0. (ids[]=[1,3,2,3,0], seen_mask=0x00)",
@@ -8430,7 +8529,7 @@ window.COURSE = {
         "+ [100,104,102,106]→412; trượt→420 (avg=105)"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tính tổng 4 mẫu ADC liên tiếp trong O(1) mỗi bước bằng cách trừ mẫu cũ rời cửa sổ và cộng mẫu mới vào, rồi dịch phải `>> 2` để lấy trung bình!",
+        "scenario": "PC0/ADC0 đưa mẫu vào cửa sổ. Trừ mẫu cũ trước khi thêm mẫu mới và chọn kiểu tổng theo số mẫu tối đa.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Tính tổng 4 mẫu ADC liên tiếp trong O(1) mỗi bước bằng cách trừ mẫu cũ rời cửa sổ và cộng mẫu mới vào, rồi dịch phải `>> 2` để lấy trung bình!",
         "prototype": "void sliding_window_solve(void)",
         "workedExample": [
           "Bước 1: 6 mẫu ADC đọc liên tiếp từ cảm biến nhiệt độ LM35 / chiết áp. (Cửa sổ K=4 mẫu (2^2), Chia 4=Dùng >> 2)",
@@ -8673,7 +8772,7 @@ window.COURSE = {
         "+ id=5, rpm=1200 → {0x05, 0x04, 0xB0}"
       ],
       "problem": {
-        "scenario": "Với chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Đóng gói ID (uint8_t) và giá trị Encoder 16-bit (uint16_t) vào mảng byte `tx_buf[]` theo chuẩn Big-Endian để truyền qua UART.",
+        "scenario": "Lấy trường mẫu từ SRAM, ghi lần lượt vào bộ đệm TX của USART0 theo thứ tự byte đề cho. Giữ kiểm tra chiều dài đích.\n\nVới chỉ 2 KB SRAM trên ATmega328P, mọi thao tác xử lý mảng cảm biến ADC hoặc gói tin UART đều phải tối ưu tại chỗ (In-Place, không cấp phát thêm mảng lớn). Yêu cầu thực tế: Đóng gói ID (uint8_t) và giá trị Encoder 16-bit (uint16_t) vào mảng byte `tx_buf[]` theo chuẩn Big-Endian để truyền qua UART.",
         "prototype": "void serialize_buf_solve(void)",
         "workedExample": [
           "Bước 1: Cần đóng gói id (1 byte) và tốc độ động cơ rpm = 1200 (0x04B0, 2 byte) vào mảng truyền. (id=0x05, rpm=1200 (0x04B0))",
@@ -8804,10 +8903,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Dịch phải 3 bit (`>> 3`) tránh hoàn toàn phép chia phần mềm và số thực float cực nặng trên AVR."
+        },
+        {
+          "q": "Mảng 64 mẫu ADC kiểu uint16_t chiếm bao nhiêu byte SRAM?",
+          "opts": [
+            "128",
+            "64",
+            "256"
+          ],
+          "ans": 0,
+          "exp": "Mỗi phần tử chiếm hai byte."
         }
       ],
       "remember": "Luôn truyền kèm tham số `uint8_t len` khi truyền mảng vào hàm!",
-      "pitfall": "Tránh khai báo mảng cục bộ lớn trong hàm vì Stack của ATmega328P rất nhỏ!"
+      "pitfall": "Tránh khai báo mảng cục bộ lớn trong hàm vì Stack của ATmega328P rất nhỏ!",
+      "avrContext": "Tính số byte mảng chiếm trong 2 KiB SRAM rồi kiểm ca vượt chỉ số. Phần RAM còn lại còn dành cho stack và dữ liệu khác."
     },
     {
       "id": 53,
@@ -8857,10 +8967,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Với `n=0`, `n-1` thành 255 khiến vòng lặp truy cập ngoài biên mảng (Buffer Overflow)."
+        },
+        {
+          "q": "Tổng cửa sổ ADC0 bằng 12. Bỏ 2, thêm 6. Tổng mới?",
+          "opts": [
+            "18",
+            "16",
+            "8"
+          ],
+          "ans": 1,
+          "exp": "12 trừ 2 rồi cộng 6."
         }
       ],
       "remember": "Mọi thao tác mảng trên ATmega328P cần ưu tiên In-Place và kiểm tra biên chặt chẽ.",
-      "pitfall": "Ghi tràn ngoài mảng trên ATmega328P không báo Segmentation Fault mà âm thầm phá hỏng biến khác hoặc Stack!"
+      "pitfall": "Ghi tràn ngoài mảng trên ATmega328P không báo Segmentation Fault mà âm thầm phá hỏng biến khác hoặc Stack!",
+      "avrContext": "Xác định dữ liệu nào thuộc cửa sổ ADC và dữ liệu nào là byte của khung. Kiểm kiểu tích lũy và điểm quấn vòng."
     },
     {
       "id": 54,
@@ -9030,7 +9151,7 @@ window.COURSE = {
         "+ swap(10, 25) → a=25, b=10"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Truyền địa chỉ SRAM 16-bit (`uint8_t *`) vào hàm `swap()` để thay đổi trực tiếp giá trị hai biến ở hàm gọi.",
+        "scenario": "Hoán đổi hai giá trị hiệu chuẩn mẫu ADC trong SRAM bằng con trỏ đầu ra. Kiểm trường hợp hai con trỏ trỏ cùng biến.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Truyền địa chỉ SRAM 16-bit (`uint8_t *`) vào hàm `swap()` để thay đổi trực tiếp giá trị hai biến ở hàm gọi.",
         "prototype": "void ptr_swap_solve(void)",
         "workedExample": [
           "Bước 1: Biến `a` nằm ở SRAM 0x0100 (=10), biến `b` nằm ở 0x0101 (=25). (&a=0x0100 (10), &b=0x0101 (25))",
@@ -9253,7 +9374,7 @@ window.COURSE = {
         "+ {4,7,12,5} → sum=16"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Duyệt mảng bằng con trỏ `p++` và kiểm tra chẵn bằng `(*p & 1U) == 0` nhanh hơn phép `% 2`.",
+        "scenario": "Sau khi driver ADC lưu mẫu vào mảng SRAM, duyệt từ đầu đến mốc sau cuối, cộng các giá trị chẵn vào kiểu đủ rộng.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Duyệt mảng bằng con trỏ `p++` và kiểm tra chẵn bằng `(*p & 1U) == 0` nhanh hơn phép `% 2`.",
         "prototype": "void ptr_even_sum_solve(void)",
         "workedExample": [
           "Bước 1: Mảng 4 byte tại 0x0100. (arr=[4, 7, 12, 5], sum=0)",
@@ -9498,7 +9619,7 @@ window.COURSE = {
         "+ {1,2,3,4} → {4,3,2,1}"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng cặp con trỏ `start` và `end` tiến lại gần nhau để đảo mảng tại chỗ.",
+        "scenario": "Dùng hai con trỏ trong bộ đệm mẫu SRAM và đổi các phần tử từ hai đầu vào giữa. Kiểm mảng rỗng trước khi tạo địa chỉ cuối.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng cặp con trỏ `start` và `end` tiến lại gần nhau để đảo mảng tại chỗ.",
         "prototype": "void ptr_rev_solve(void)",
         "workedExample": [
           "Bước 1: `s` trỏ đầu mảng (0x0100), `e` trỏ cuối mảng (0x0103). (s=0x0100, e=0x0103)",
@@ -9742,7 +9863,7 @@ window.COURSE = {
         "+ {320,890,510,740} → 890"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ `const uint16_t *p` bước nhảy 2 byte/lần (`p++` tăng địa chỉ thêm `sizeof(uint16_t) = 2`) để tìm đỉnh tín hiệu.",
+        "scenario": "Tìm đỉnh trong dãy mẫu ADC đã đọc từ PC0 và lưu SRAM. Khởi tạo cực đại từ mẫu đầu khi mảng có phần tử.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ `const uint16_t *p` bước nhảy 2 byte/lần (`p++` tăng địa chỉ thêm `sizeof(uint16_t) = 2`) để tìm đỉnh tín hiệu.",
         "prototype": "void ptr_max_solve(void)",
         "workedExample": [
           "Bước 1: Mảng 4 phần tử `uint16_t` chiếm 8 byte (0x0100. (Bước nhảy p++=+2 byte, max đầu=320)",
@@ -9976,7 +10097,7 @@ window.COURSE = {
         "+ {50,100,80,70} → 300"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Tính tổng các phần tử `uint8_t` vào biến tích lũy `uint16_t` bằng con trỏ `p` đến `end`.",
+        "scenario": "Tính tổng của vùng mẫu liên tiếp trong SRAM. Kiểu tích lũy phải đủ rộng cho tất cả mẫu 8 bit của đề.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Tính tổng các phần tử `uint8_t` vào biến tích lũy `uint16_t` bằng con trỏ `p` đến `end`.",
         "prototype": "void ptr_sum_solve(void)",
         "workedExample": [
           "Bước 1: Tính trước con trỏ kết thúc `end` giúp vòng lặp chỉ cần so sánh `p != end`. (arr=[50, 100, 80, 70], sum=0)",
@@ -10207,7 +10328,7 @@ window.COURSE = {
         "+ active: &bufA → &bufB, **pp = 0x22"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ cấp 2 (`**pp`) để hàm bên trong có thể thay đổi con trỏ đang trỏ tới bộ đệm UART/ADC nào.",
+        "scenario": "ADC ghi vào bộ đệm đang nhận, main xử lý bộ đệm đã đầy. Dùng con trỏ kép để minh họa đổi địa chỉ mà không chép dữ liệu.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ cấp 2 (`**pp`) để hàm bên trong có thể thay đổi con trỏ đang trỏ tới bộ đệm UART/ADC nào.",
         "prototype": "void double_ptr_solve(void)",
         "workedExample": [
           "Bước 1: `active` đang trỏ tới `bufA` (0x0100). (active=0x0100 (&bufA), *active=0x11)",
@@ -10431,7 +10552,7 @@ window.COURSE = {
         "+ p1=0x0100, p2=0x0140 → p1=0x0140, p2=0x0100"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Hoán đổi hai con trỏ `rx_buf` và `proc_buf` chỉ trong 2 byte thay vì copy cả mảng 64 byte — kỹ thuật Zero-Copy kinh điển trong Embedded!",
+        "scenario": "Hoán đổi địa chỉ của hai bộ đệm SRAM. Khi nối với ISR thật, chỉ đổi quyền sở hữu sau khi bộ đệm nhận hoàn tất.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Hoán đổi hai con trỏ `rx_buf` và `proc_buf` chỉ trong 2 byte thay vì copy cả mảng 64 byte — kỹ thuật Zero-Copy kinh điển trong Embedded!",
         "prototype": "void swap_ptrs_solve(void)",
         "workedExample": [
           "Bước 1: p1 đang trỏ buf1 (0x0100), p2 trỏ buf2 (0x0140). (p1=0x0100, p2=0x0140)",
@@ -10637,7 +10758,7 @@ window.COURSE = {
         "+ 150 + 270 = 420"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Sử dụng `const void *` để viết hàm giao tiếp tổng quát (generic API) rồi ép kiểu tường minh về `const int16_t *` trước khi giải tham chiếu.",
+        "scenario": "Hai địa chỉ void * trỏ tới đối tượng cùng kiểu theo hợp đồng của hàm. Ép sang đúng kiểu trước khi đọc hoặc tính tổng.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Sử dụng `const void *` để viết hàm giao tiếp tổng quát (generic API) rồi ép kiểu tường minh về `const int16_t *` trước khi giải tham chiếu.",
         "prototype": "void void_ptr_solve(void)",
         "workedExample": [
           "Bước 1: `void *` có thể giữ địa chỉ của mọi kiểu dữ liệu trong SRAM, nhưng KHÔNG thể trực tiếp viết `*px` vì compiler không biết kích thước kiểu. (px=&x (void*), py=&y (void*))",
@@ -10862,7 +10983,7 @@ window.COURSE = {
         "- cmd_id=9 → bị chặn bởi if(cmd_id<4)"
       ],
       "problem": {
-        "scenario": "Dùng bảng con trỏ hàm để chọn một trong bốn lệnh mô phỏng STOP, FWD, REV và BRAKE. Kiểm mã 0–3 trước khi gọi. Các hàm mẫu ghi kết quả vào biến output để quan sát trong debugger.",
+        "scenario": "Byte lệnh đọc từ USART0 chọn STOP/FWD/REV/BRAKE. Kiểm phạm vi trước khi gọi callback trong bảng.\n\nDùng bảng con trỏ hàm để chọn một trong bốn lệnh mô phỏng STOP, FWD, REV và BRAKE. Kiểm mã 0–3 trước khi gọi. Các hàm mẫu ghi kết quả vào biến output để quan sát trong debugger.",
         "prototype": "void fn_dispatch_solve(void)",
         "workedExample": [
           "Bước 1: Trên ATmega328P, mỗi con trỏ hàm giữ địa chỉ Word (16-bit) trong Flash (32 KB = 16K Words). (cmd_fn_t=Con trỏ hàm 16-bit, Số lệnh=4 (0..3))",
@@ -11146,7 +11267,7 @@ window.COURSE = {
         "+ RUN + overcurrent → FAULT"
       ],
       "problem": {
-        "scenario": "Dùng biến con trỏ hàm current để chọn trình xử lý trạng thái IDLE, RUN hoặc FAULT. Hàm đang chạy có thể cập nhật current khi nhận sự kiện. Đối chiếu trạng thái sau từng sự kiện mô phỏng.",
+        "scenario": "Dùng sự kiện nút PD2 bắt đầu trạng thái RUN và cờ lỗi trở về FAULT. Hàm trạng thái được gọi từ vòng lặp chính.\n\nDùng biến con trỏ hàm current để chọn trình xử lý trạng thái IDLE, RUN hoặc FAULT. Hàm đang chạy có thể cập nhật current khi nhận sự kiện. Đối chiếu trạng thái sau từng sự kiện mô phỏng.",
         "prototype": "void fsm_fnptr_solve(void)",
         "workedExample": [
           "Bước 1: Biến `cur_state` giữ địa chỉ hàm trạng thái hiện tại. (cur_state=st_idle, Kiến trúc=Non-blocking FSM)",
@@ -11348,7 +11469,7 @@ window.COURSE = {
         "+ copy 4 byte → dst giống hệt src"
       ],
       "problem": {
-        "scenario": "Sao chép n byte bằng cách đi lần lượt qua con trỏ nguồn và đích. Giả sử hai vùng tách biệt và có ít nhất n byte. Với vùng chồng lấp, hãy dùng memmove hoặc thuật toán chọn chiều sao chép.",
+        "scenario": "Sao chép một khung UART từ vùng nhận sang vùng xử lý trong SRAM. Giả định hai vùng không chồng lấp và đủ dung lượng.\n\nSao chép n byte bằng cách đi lần lượt qua con trỏ nguồn và đích. Giả sử hai vùng tách biệt và có ít nhất n byte. Với vùng chồng lấp, hãy dùng memmove hoặc thuật toán chọn chiều sao chép.",
         "prototype": "void memcpy_solve(void)",
         "workedExample": [
           "Bước 1: Ép kiểu `void*` sang `uint8_t*` để copy chính xác từng byte một. (src=0x0100, dst=0x0120)",
@@ -11556,7 +11677,7 @@ window.COURSE = {
         "+ {25,24,26,28,31,30} → index 1"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ trượt quét mảng mẫu cảm biến để phát hiện xu hướng tăng liên tục 3 chu kỳ (`*p < *(p+1) && *(p+1) < *(p+2)`).",
+        "scenario": "Tìm ba mẫu nhiệt tăng liên tiếp trong bộ đệm SRAM. Chỉ kiểm khi còn đủ ba phần tử từ vị trí hiện tại.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Dùng con trỏ trượt quét mảng mẫu cảm biến để phát hiện xu hướng tăng liên tục 3 chu kỳ (`*p < *(p+1) && *(p+1) < *(p+2)`).",
         "prototype": "void scan_inc3_solve(void)",
         "workedExample": [
           "Bước 1: Cần quét đến tối đa `p <= s + n - 3` để không đọc quá biên mảng!. (Mẫu=[25,24,26,28,31,30], Biên dừng=n - 3 = 3)",
@@ -11800,7 +11921,7 @@ window.COURSE = {
         "- {1,0,0,1,0} → ok=0"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Kiểm tra xem dãy byte trong bộ đệm có luân phiên tăng-giảm (hoặc 0-1 xen kẽ) bằng con trỏ.",
+        "scenario": "Kiểm mẫu luân phiên trong bộ đệm nhận. Với USART0, byte 0x55 có thứ tự bit luân phiên theo cách biểu diễn nhị phân.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Kiểm tra xem dãy byte trong bộ đệm có luân phiên tăng-giảm (hoặc 0-1 xen kẽ) bằng con trỏ.",
         "prototype": "void alt_pattern_solve(void)",
         "workedExample": [
           "Bước 1: Kiểm tra tín hiệu đồng bộ xung vuông 1-0-1-0-1. (sig=[1,0,1,0,1], ok=1)",
@@ -12048,7 +12169,7 @@ window.COURSE = {
         "+ Đăng ký & gọi EVT 2 với data='A'"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Đăng ký các hàm callback cho từng sự kiện phần cứng (`EVT_BTN`, `EVT_TIMER`, `EVT_UART`) vào mảng con trỏ hàm — kiến trúc Driver chuẩn!",
+        "scenario": "Ánh xạ các cờ sự kiện từ nút PD2, Timer0 và USART0 vào hàm xử lý. Quy định ISR ghi cờ, main gọi callback.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Đăng ký các hàm callback cho từng sự kiện phần cứng (`EVT_BTN`, `EVT_TIMER`, `EVT_UART`) vào mảng con trỏ hàm — kiến trúc Driver chuẩn!",
         "prototype": "void event_callbacks_solve(void)",
         "workedExample": [
           "Bước 1: Mảng 3 slot callback khởi tạo `NULL` (0) cho 3 sự kiện phần cứng. (Slots=3 sự kiện, Khởi tạo=NULL (An toàn))",
@@ -12215,7 +12336,7 @@ window.COURSE = {
         "+ *(volatile uint8_t*)0x25 |= 0x20 → PB5 HIGH"
       ],
       "problem": {
-        "scenario": "Con trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Hiểu bản chất định nghĩa `PORTB` trong `<avr/io.h>`: ép địa chỉ số `0x25` thành `volatile uint8_t *` để CPU AVR ghi trực tiếp ra chân vật lý!",
+        "scenario": "PORTB có địa chỉ không gian dữ liệu 0x25 trên ATmega328P. Đổi chốt PB5 qua volatile uint8_t *, rồi kiểm DDRB để suy ra chân có được điều khiển hay không.\n\nCon trỏ 16-bit trên ATmega328P cho phép truy cập trực tiếp không gian dữ liệu (`0x0020–0x08FF`), làm Zero-Copy Double Buffer và xây dựng bảng điều phối tác vụ O(1). Bài toán thực tế: Hiểu bản chất định nghĩa `PORTB` trong `<avr/io.h>`: ép địa chỉ số `0x25` thành `volatile uint8_t *` để CPU AVR ghi trực tiếp ra chân vật lý!",
         "prototype": "void mmio_cast_solve(void)",
         "workedExample": [
           "Bước 1: Trong bản đồ bộ nhớ ATmega328P, thanh ghi `PORTB` nằm ở địa chỉ dữ liệu `0x25`. (Địa chỉ PORTB=0x0025, volatile=BẮT BUỘC)",
@@ -12327,10 +12448,21 @@ window.COURSE = {
           ],
           "ans": 2,
           "exp": "Hậu tố `++` ưu tiên cao hơn `*`, trả về địa chỉ cũ để `*` giải tham chiếu rồi mới tăng `p`."
+        },
+        {
+          "q": "Với uint8_t samples[8] ở SRAM, địa chỉ nào làm mốc sau cuối?",
+          "opts": [
+            "samples + 9",
+            "Đọc *(samples + 8)",
+            "samples + 8, chỉ so sánh"
+          ],
+          "ans": 2,
+          "exp": "Chỉ dùng con trỏ ngay sau cuối làm mốc, không đọc tại đó."
         }
       ],
       "remember": "Nắm chắc kích thước con trỏ 16-bit trên AVR, từ khóa `volatile` và kiểm tra NULL/biên.",
-      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!"
+      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!",
+      "avrContext": "Phân biệt địa chỉ đối tượng trong SRAM với giá trị byte chứa ở địa chỉ đó. Bố trí địa chỉ của biến xem trong debugger."
     },
     {
       "id": 70,
@@ -12380,10 +12512,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Muốn sửa 1 biến con trỏ `T *p` trong hàm con, phải truyền địa chỉ của nó là `T **pp`."
+        },
+        {
+          "q": "Muốn hàm thay con trỏ uint8_t *rx của bên gọi, truyền gì?",
+          "opts": [
+            "&rx",
+            "*rx",
+            "rx"
+          ],
+          "ans": 0,
+          "exp": "&rx có kiểu uint8_t **."
         }
       ],
       "remember": "Nắm chắc kích thước con trỏ 16-bit trên AVR, từ khóa `volatile` và kiểm tra NULL/biên.",
-      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!"
+      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!",
+      "avrContext": "Khi đổi con trỏ bộ đệm SRAM của bên gọi, phân biệt quyền sửa địa chỉ và quyền sửa dữ liệu qua kiểu tham số."
     },
     {
       "id": 71,
@@ -12433,10 +12576,21 @@ window.COURSE = {
           ],
           "ans": 0,
           "exp": "Thời gian phản hồi O(1) ổn định (deterministic), rất quan trọng cho hệ thống nhúng thời gian thực."
+        },
+        {
+          "q": "USART0 nhận mã lệnh 4, bảng callback có 4 mục. Xử lý thế nào?",
+          "opts": [
+            "Gọi bảng[4]",
+            "Báo mã ngoài phạm vi",
+            "Gọi bảng[0] luôn"
+          ],
+          "ans": 1,
+          "exp": "Chỉ số hợp lệ là 0 đến 3."
         }
       ],
       "remember": "Nắm chắc kích thước con trỏ 16-bit trên AVR, từ khóa `volatile` và kiểm tra NULL/biên.",
-      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!"
+      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!",
+      "avrContext": "Dùng mã lệnh nhận qua USART0 làm chỉ số bảng. Xét kiểm phạm vi và cách FSM chọn hàm tiếp theo."
     },
     {
       "id": 72,
@@ -12486,10 +12640,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Biến cục bộ nằm trên Stack sẽ bị ghi đè ngay khi gọi hàm tiếp theo → đọc/ghi qua con trỏ đó gây lỗi không lường trước."
+        },
+        {
+          "q": "Dùng con trỏ đọc và ghi PORTB, kiểu đối tượng đích nên là gì?",
+          "opts": [
+            "const uint8_t",
+            "uint32_t",
+            "volatile uint8_t"
+          ],
+          "ans": 2,
+          "exp": "Thanh ghi rộng 8 bit và cần truy cập theo ngữ nghĩa volatile."
         }
       ],
       "remember": "Nắm chắc kích thước con trỏ 16-bit trên AVR, từ khóa `volatile` và kiểm tra NULL/biên.",
-      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!"
+      "pitfall": "Gọi con trỏ hàm NULL trên ATmega328P sẽ nhảy về địa chỉ 0x0000 (Reset Vector) làm reset chip!",
+      "avrContext": "Phân biệt con trỏ RAM và địa chỉ MMIO như 0x25 của PORTB. Xét hiệu lực volatile và giới hạn vùng được phép truy cập."
     },
     {
       "id": 73,
@@ -12619,7 +12784,7 @@ window.COURSE = {
         "+ reg->cs=3 → TCCR0B=0x03"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Dùng toán tử mũi tên `->` qua con trỏ tới struct bitfield để bật/tắt các bit cấu hình thanh ghi phần cứng sạch sẽ, dễ đọc.",
+        "scenario": "Cho con trỏ tới cấu hình Timer0 trong SRAM. Sửa trường mong muốn rồi chuyển cấu hình sang mặt nạ TCCR0A/B ở lớp driver.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Dùng toán tử mũi tên `->` qua con trỏ tới struct bitfield để bật/tắt các bit cấu hình thanh ghi phần cứng sạch sẽ, dễ đọc.",
         "prototype": "void ptr_struct_bf_solve(void)",
         "workedExample": [
           "Bước 1: Định nghĩa struct bitfield 8-bit khớp chính xác thanh ghi TCCR0B của ATmega328P (LSB nằm ở bit 0 trên avr-gcc). (sizeof=1 byte, cs (bit 2:0)=Prescaler)",
@@ -12763,7 +12928,7 @@ window.COURSE = {
         "+ 0x41 (2 bit 1) → Even parity = 0"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Đóng gói khung UART gồm Start(0), Data(8-bit), Parity(1-bit) và Stop(1) trong struct và tự tính Even Parity.",
+        "scenario": "Tính even parity cho byte trước khi gửi UART. Khi dùng USART0 thật, cài UPM trong UCSR0C để phần cứng tự phát parity.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Đóng gói khung UART gồm Start(0), Data(8-bit), Parity(1-bit) và Stop(1) trong struct và tự tính Even Parity.",
         "prototype": "void uart_frame_solve(void)",
         "workedExample": [
           "Bước 1: Cấu trúc mô tả khung truyền 8E1 (8 data, Even parity, 1 stop bit — cấu hình `UPM01=1` trong `UCSR0C`). (Cấu hình AVR=UCSR0C: 8E1)",
@@ -12909,7 +13074,7 @@ window.COURSE = {
         "+ sizeof(pwm_cfg_t) == 2 → biên dịch thành công"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Dùng `_Static_assert(sizeof(cfg_reg_t) == 2, ...)` để bắt lỗi sai kích thước struct ngay lúc biên dịch trước khi nạp xuống ATmega328P.",
+        "scenario": "Dùng _Static_assert để kiểm kích thước và offset cấu trúc bằng avr-gcc. Dùng quy ước dữ liệu riêng cho giao thức.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Dùng `_Static_assert(sizeof(cfg_reg_t) == 2, ...)` để bắt lỗi sai kích thước struct ngay lúc biên dịch trước khi nạp xuống ATmega328P.",
         "prototype": "void validate_layout_solve(void)",
         "workedExample": [
           "Bước 1: Struct cấu hình PWM kỳ vọng đúng 2 byte (byte 0: cờ chế độ, byte 1: giá trị TOP OCR0A). (Byte 0=mode+en+rsv (8b), Byte 1=top (8b))",
@@ -13088,7 +13253,7 @@ window.COURSE = {
         "+ opt_s: 6 byte trên AVR, 8 byte (6 nếu packed) trên ARM"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: So sánh kích thước của cùng 1 struct `{uint8_t a; uint32_t b; uint8_t c;}` trên ATmega328P (6 byte, KHÔNG padding!) và trên STM32/PC (12 byte, 6 byte padding!).",
+        "scenario": "Biên dịch cho AVR và so với ARM rồi quan sát sizeof/offsetof thực tế. Dùng kết quả AVR để tính SRAM cho mảng bản ghi.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: So sánh kích thước của cùng 1 struct `{uint8_t a; uint32_t b; uint8_t c;}` trên ATmega328P (6 byte, KHÔNG padding!) và trên STM32/PC (12 byte, 6 byte padding!).",
         "prototype": "void struct_padding_solve(void)",
         "workedExample": [
           "Bước 1: Vì ATmega328P có bus dữ liệu 8-bit (alignment = 1 byte), `sizeof(struct raw_s)` trên AVR là **6 byte**. (AVR 8-bit=6 byte (0 pad), STM32/PC=12 byte (6 pad!))",
@@ -13302,7 +13467,7 @@ window.COURSE = {
         "+ {0xAA,0x02,0x01,0xF4,0x5E} → val=500"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Giải mã mảng 5 byte nhận qua UART `{0xAA, 0x02, 0x01, 0xF4, 0x5E}` thành `pkt_t { header, cmd, value16, crc }`.",
+        "scenario": "Nhận byte qua USART0 rồi giải mã từng trường. Kiểm độ dài khung và thứ tự byte trước khi ghi struct.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Giải mã mảng 5 byte nhận qua UART `{0xAA, 0x02, 0x01, 0xF4, 0x5E}` thành `pkt_t { header, cmd, value16, crc }`.",
         "prototype": "void parse_pkt_solve(void)",
         "workedExample": [
           "Bước 1: Luồng byte nhận từ UART: Header=0xAA, Cmd=0x02, Value=0x01F4 (500), CRC=0x5E. (rx[0..4]=AA 02 01 F4 5E)",
@@ -13517,7 +13682,7 @@ window.COURSE = {
         "+ GPIOB=0x23, GPIOC=0x26, GPIOD=0x29"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Nhìn vào bảng thanh ghi ATmega328P: `PINB(0x23)`, `DDRB(0x24)`, `PORTB(0x25)` nằm liền kề nhau! Ta có thể tạo 1 struct `avr_port_t` giống phong cách STM32 HAL!",
+        "scenario": "Mô hình các byte PINx/DDRx/PORTx để phân tích layout. Dùng tên thanh ghi avr/io.h và mặt nạ khi truy cập ngoại vi thật.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Nhìn vào bảng thanh ghi ATmega328P: `PINB(0x23)`, `DDRB(0x24)`, `PORTB(0x25)` nằm liền kề nhau! Ta có thể tạo 1 struct `avr_port_t` giống phong cách STM32 HAL!",
         "prototype": "void port_overlay_solve(void)",
         "workedExample": [
           "Bước 1: Trong ATmega328P, cả 3 cổng B (0x23), C (0x26), D (0x29) đều có đúng thứ tự liên tiếp `PIN (+0), DDR (+1), PORT (+2)`!. (PORT_B=0x23..0x25, PORT_C=0x26..0x28)",
@@ -13691,7 +13856,7 @@ window.COURSE = {
         "+ {{1,32},{2,51},{3,48}}, >45 → alarm_mask=0x0C"
       ],
       "problem": {
-        "scenario": "Khi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Duyệt mảng struct các nút cảm biến (`id`, `temp_c`) và đếm/đánh dấu những cảm biến vượt ngưỡng 45°C để bật quạt làm mát.",
+        "scenario": "Đọc các mẫu ADC vào mảng bản ghi rồi lọc theo ngưỡng. Đếm số phần tử kết quả trước khi ghi mảng đích.\n\nKhi đóng gói khung truyền cảm biến hoặc viết lớp Driver HAL kiểu STM32 cho ATmega328P, Struct & Bitfield giúp mã nguồn rõ ràng, an toàn kích thước. Yêu cầu: Duyệt mảng struct các nút cảm biến (`id`, `temp_c`) và đếm/đánh dấu những cảm biến vượt ngưỡng 45°C để bật quạt làm mát.",
         "prototype": "void filter_structs_solve(void)",
         "workedExample": [
           "Bước 1: Mỗi `sensor_t` chỉ chiếm 2 byte SRAM → 3 cảm biến tốn đúng 6 byte. (Ngưỡng=> 45°C, Tổng SRAM=6 byte)",
@@ -13805,10 +13970,21 @@ window.COURSE = {
           ],
           "ans": 0,
           "exp": "ATmega328P có căn chỉnh 1 byte nên tổng kích thước = 1 + 2 + 1 = 4 byte."
+        },
+        {
+          "q": "Driver có con trỏ p tới bản ghi ADC. Ghi trường mv bằng cách nào?",
+          "opts": [
+            "p->mv = 500",
+            "p.mv = 500",
+            "p = 500"
+          ],
+          "ans": 0,
+          "exp": "Toán tử -> truy cập trường qua con trỏ struct."
         }
       ],
       "remember": "Nắm vững thứ tự PIN/DDR/PORT trên AVR và khác biệt Padding giữa AVR 8-bit với ARM 32-bit.",
-      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!"
+      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!",
+      "avrContext": "Theo dõi một bản ghi cảm biến trong SRAM khi truyền giá trị hoặc địa chỉ vào hàm. Xác định thay đổi nào còn lại ở bên gọi."
     },
     {
       "id": 81,
@@ -13859,10 +14035,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "`_Static_assert` báo lỗi ngay lúc compile và không tốn byte Flash nào."
+        },
+        {
+          "q": "Thứ tự bit-field của một bản ghi AVR đem gửi UART có thể mặc định giống trên ARM không?",
+          "opts": [
+            "Luôn giống",
+            "Phụ thuộc compiler và ABI",
+            "Chỉ phụ thuộc clock"
+          ],
+          "ans": 1,
+          "exp": "Trình biên dịch và ABI quyết định layout."
         }
       ],
       "remember": "Nắm vững thứ tự PIN/DDR/PORT trên AVR và khác biệt Padding giữa AVR 8-bit với ARM 32-bit.",
-      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!"
+      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!",
+      "avrContext": "Kiểm layout bằng compiler đang dùng cho ATmega328P. Đừng suy thứ tự bit-field từ một ví dụ chạy trên ARM."
     },
     {
       "id": 82,
@@ -13913,10 +14100,21 @@ window.COURSE = {
           ],
           "ans": 0,
           "exp": "8 data bits, Even parity (UPM01=1, UPM00=0), 1 stop bit."
+        },
+        {
+          "q": "Đổi hướng PB5 sang output phải sửa thanh ghi nào?",
+          "opts": [
+            "PINB",
+            "PORTB",
+            "DDRB"
+          ],
+          "ans": 2,
+          "exp": "DDRB điều khiển hướng ở cổng B."
         }
       ],
       "remember": "Nắm vững thứ tự PIN/DDR/PORT trên AVR và khác biệt Padding giữa AVR 8-bit với ARM 32-bit.",
-      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!"
+      "pitfall": "Luôn tuần tự hóa byte khi truyền gói tin giữa ATmega328P và PC!",
+      "avrContext": "Xác nhận địa chỉ không gian dữ liệu của PINB, DDRB, PORTB. Phân biệt mô hình bố trí với thao tác ghi 1 vào PINB."
     },
     {
       "id": 83,
@@ -14014,7 +14212,7 @@ window.COURSE = {
         "+ rxen=1, txen=1, rxcie=1 → UCSR0B=0x98"
       ],
       "problem": {
-        "scenario": "Union cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Dùng `union` chứa cả `uint8_t raw` (đọc/ghi nguyên byte 1 lần) và `struct` bitfield (bật/tắt từng bit `RXEN0`, `TXEN0`, `RXCIE0`).",
+        "scenario": "Giải thích cách union minh họa cờ điều khiển bằng byte trong SRAM. Khi ghi UCSR0B thật, dùng mặt nạ theo datasheet.\n\nUnion cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Dùng `union` chứa cả `uint8_t raw` (đọc/ghi nguyên byte 1 lần) và `struct` bitfield (bật/tắt từng bit `RXEN0`, `TXEN0`, `RXCIE0`).",
         "prototype": "void union_reg_solve(void)",
         "workedExample": [
           "Bước 1: `raw` và `b` chia sẻ CHUNG 1 ô nhớ 1 byte! Sửa `u. (sizeof(ucsr0b_u)=1 byte, Chia sẻ nhớ=raw ↔ b)",
@@ -14159,7 +14357,7 @@ window.COURSE = {
         "+ 0x12345678 → b={0x78, 0x56, 0x34, 0x12}"
       ],
       "problem": {
-        "scenario": "Union cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Dùng `union { uint32_t u32; uint8_t b[4]; }` để quan sát cách ATmega328P (Little-Endian) lưu 4 byte trong SRAM.",
+        "scenario": "Chụp bộ đếm xung 32 bit vào SRAM rồi xem biểu diễn byte trên AVR. Quy định thứ tự gửi riêng nếu dùng USART0.\n\nUnion cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Dùng `union { uint32_t u32; uint8_t b[4]; }` để quan sát cách ATmega328P (Little-Endian) lưu 4 byte trong SRAM.",
         "prototype": "void union_u32_solve(void)",
         "workedExample": [
           "Bước 1: ATmega328P là **Little-Endian**: byte thấp nhất (LSB = `0x78`) nằm ở địa chỉ thấp nhất `b[0]`, byte cao nhất (`0x12`) nằm ở `b[3]`!. (b[0] (LSB)=0x78, b[3] (MSB)=0x12)"
@@ -14332,7 +14530,7 @@ window.COURSE = {
         "+ 0x00112233, b[2]=0xFF → 0x00FF2233"
       ],
       "problem": {
-        "scenario": "Khảo sát bố trí byte của AVR bằng một union. Ghi 0x00112233 vào u32 rồi thay byte chỉ số 2. Kết quả mẫu phụ thuộc thứ tự byte của đích. Để mã truyền dữ liệu giữa các nền tảng, dùng dịch và mặt nạ thay thế.",
+        "scenario": "Thay đúng byte của từ cấu hình 32 bit trong SRAM. Kết quả kiểm dựa trên bố trí little-endian của AVR.\n\nKhảo sát bố trí byte của AVR bằng một union. Ghi 0x00112233 vào u32 rồi thay byte chỉ số 2. Kết quả mẫu phụ thuộc thứ tự byte của đích. Để mã truyền dữ liệu giữa các nền tảng, dùng dịch và mặt nạ thay thế.",
         "prototype": "void union_mod32_solve(void)",
         "workedExample": [
           "Bước 1: Ghi trực tiếp `0xFF` vào byte offset +2 làm `v. (v.u32 cũ=0x00112233, v.u32 mới=0x00FF2233)"
@@ -14554,7 +14752,7 @@ window.COURSE = {
         "+ hdr=0xAA, cmd=1, val=1000 → {AA,01,E8,03}"
       ],
       "problem": {
-        "scenario": "Union cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Kết hợp `struct` các trường gói tin với mảng `uint8_t raw[4]` để gửi toàn bộ gói tin qua vòng lặp `uart_putc(pkt.raw[i])`.",
+        "scenario": "Chuẩn bị khung chuyển qua USART0. Xác nhận byte nào sẽ đến trước và tránh dựa vào padding struct.\n\nUnion cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Kết hợp `struct` các trường gói tin với mảng `uint8_t raw[4]` để gửi toàn bộ gói tin qua vòng lặp `uart_putc(pkt.raw[i])`.",
         "prototype": "void union_pkt_solve(void)",
         "workedExample": [
           "Bước 1: Trên ATmega328P (8-bit alignment), `struct f` chiếm đúng 1+1+2 = 4 byte, khớp 100% với `raw[4]`!. (sizeof=4 byte, Truy cập=f.cmd hoặc raw[i])",
@@ -14729,7 +14927,7 @@ window.COURSE = {
         "+ ADCL=0xF4, ADCH=0x02 → full=756"
       ],
       "problem": {
-        "scenario": "Union cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Gom 2 thanh ghi 8-bit `ADCL` và `ADCH` vào `union { uint16_t val16; struct { uint8_t lo; uint8_t hi; }; }` để lấy ngay kết quả 10-bit mà không cần dịch bit!",
+        "scenario": "Đọc ADCL trước ADCH khi lấy cả cặp ở ATmega328P. Mô hình ca kiểm dùng ADLAR bằng 0.\n\nUnion cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Gom 2 thanh ghi 8-bit `ADCL` và `ADCH` vào `union { uint16_t val16; struct { uint8_t lo; uint8_t hi; }; }` để lấy ngay kết quả 10-bit mà không cần dịch bit!",
         "prototype": "void union_adc_solve(void)",
         "workedExample": [
           "Bước 1: Vì ATmega328P là Little-Endian, `b. (b.lo=ADCL (bit 7..0), b.hi=ADCH (bit 9..8))",
@@ -14905,7 +15103,7 @@ window.COURSE = {
         "+ 25.5f → {0x00, 0x00, 0xCC, 0x41}"
       ],
       "problem": {
-        "scenario": "Union cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Tách biến `float` 4 byte (vd `25.5f` = `0x41CC0000`) thành mảng 4 byte `uint8_t b[4]` để gửi chính xác lên Python/PC qua USART0 mà không cần `dtostrf()` nặng Flash!",
+        "scenario": "Mã hóa nhiệt độ sang 4 byte để gửi USART0. Bên nhận phải thống nhất định dạng float và thứ tự byte.\n\nUnion cho phép nhìn cùng một vùng nhớ SRAM/thanh ghi dưới 2 góc nhìn (toàn bộ giá trị vs từng byte/bitfield) — cực kỳ đắc lực khi giải mã ADC 10-bit hoặc gửi `float` qua UART. Bài toán: Tách biến `float` 4 byte (vd `25.5f` = `0x41CC0000`) thành mảng 4 byte `uint8_t b[4]` để gửi chính xác lên Python/PC qua USART0 mà không cần `dtostrf()` nặng Flash!",
         "prototype": "void union_float_solve(void)",
         "workedExample": [
           "Bước 1: Chuẩn IEEE-754 của `25. (tx.f=25.5f, IEEE-754=0x41CC0000)",
@@ -15051,10 +15249,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Mặc định trên AVR 8-bit, `double` được ánh xạ thành 32-bit IEEE-754 để tiết kiệm Flash và SRAM."
+        },
+        {
+          "q": "AVR little-endian lưu uint32_t 0x11223344. Byte tại địa chỉ thấp nhất là gì?",
+          "opts": [
+            "0x44",
+            "0x11",
+            "0x22"
+          ],
+          "ans": 0,
+          "exp": "Byte ít ý nghĩa nhất lưu ở địa chỉ thấp nhất."
         }
       ],
       "remember": "Union dùng chung 1 vùng nhớ và tuân theo thứ tự Little-Endian của AVR.",
-      "pitfall": "Không quên khởi tạo `.raw = 0` trước khi gán từng bitfield!"
+      "pitfall": "Không quên khởi tạo `.raw = 0` trước khi gán từng bitfield!",
+      "avrContext": "Quan sát vùng nhớ chung của union trong SRAM. So thứ tự byte của AVR với thứ tự giao thức yêu cầu."
     },
     {
       "id": 90,
@@ -15105,10 +15314,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Datasheet ATmega328P bắt buộc đọc ADCL trước để khóa ADCH."
+        },
+        {
+          "q": "Khi lấy cả cặp thanh ghi kết quả ADC, đọc theo thứ tự nào?",
+          "opts": [
+            "ADCH rồi ADCL",
+            "ADCL rồi ADCH",
+            "ADMUX hai lần"
+          ],
+          "ans": 1,
+          "exp": "Đọc ADCL giữ cặp kết quả ổn định cho đến khi đọc ADCH."
         }
       ],
       "remember": "Union dùng chung 1 vùng nhớ và tuân theo thứ tự Little-Endian của AVR.",
-      "pitfall": "Không quên khởi tạo `.raw = 0` trước khi gán từng bitfield!"
+      "pitfall": "Không quên khởi tạo `.raw = 0` trước khi gán từng bitfield!",
+      "avrContext": "Tách cách giải mã byte ADC khỏi việc gửi stream UART. Kiểm thứ tự đọc thanh ghi và cách ghép trường."
     },
     {
       "id": 91,
@@ -15278,7 +15498,7 @@ window.COURSE = {
         "- Khi (head+1)&15 == tail → Buffer đầy, bỏ qua byte mới (hoặc bật cờ overflow)"
       ],
       "problem": {
-        "scenario": "Khi ATmega328P nhận chuỗi lệnh dài từ máy tính qua UART (115200 bps), ngắt `ISR(USART_RX_vect)` xảy ra liên tục trong khi `main()` đang bận tính PID động cơ. Vì ATmega328P chỉ có 2 KB SRAM (không được dùng `malloc`), hãy viết hàm `rb_push(uint8_t byte)` đẩy dữ liệu vào bộ đệm vòng tĩnh 16 byte (`RB_MASK = 15`), dùng `volatile uint8_t head, tail` và trả về `0` nếu bộ đệm đã đầy (tránh ghi đè dữ liệu chưa đọc).",
+        "scenario": "USART_RX_vect nhận một byte từ UDR0. Ghi vào ô head rồi cập nhật head theo quy ước đầy/rỗng của đề.\n\nKhi ATmega328P nhận chuỗi lệnh dài từ máy tính qua UART (115200 bps), ngắt `ISR(USART_RX_vect)` xảy ra liên tục trong khi `main()` đang bận tính PID động cơ. Vì ATmega328P chỉ có 2 KB SRAM (không được dùng `malloc`), hãy viết hàm `rb_push(uint8_t byte)` đẩy dữ liệu vào bộ đệm vòng tĩnh 16 byte (`RB_MASK = 15`), dùng `volatile uint8_t head, tail` và trả về `0` nếu bộ đệm đã đầy (tránh ghi đè dữ liệu chưa đọc).",
         "prototype": "uint8_t rb_push(uint8_t data)",
         "workedExample": [
           "Bước 1: Chọn kích thước 16 byte (lũy thừa 2) để bọc vòng bằng `& 15U` chỉ tốn 1 chu kỳ trong ISR! Khai báo `volatile` vì `head` sửa trong ISR, `tail` sửa trong `main()`. (Dung lượng=15 byte hữu ích, Bọc vòng=& 15U (O(1)))",
@@ -15576,7 +15796,7 @@ window.COURSE = {
         "+ rb={'O','K'}, pop → 'O', tail=1"
       ],
       "problem": {
-        "scenario": "Bộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Kiểm tra `head != tail` và lấy byte cũ nhất ra theo nguyên tắc FIFO (First-In-First-Out).",
+        "scenario": "Vòng lặp main lấy byte cũ nhất từ FIFO UART. Kiểm rỗng, đọc ô tail rồi tăng tail.\n\nBộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Kiểm tra `head != tail` và lấy byte cũ nhất ra theo nguyên tắc FIFO (First-In-First-Out).",
         "prototype": "void ringbuf_pop_solve(void)",
         "workedExample": [
           "Bước 1: Nếu `head == tail` nghĩa là chưa có dữ liệu mới từ UART. (head / tail=2 / 0, Có sẵn=2 byte)",
@@ -15838,7 +16058,7 @@ window.COURSE = {
         "+ tail=14, head=1 → avail=(1-14)&15=3 → peek(2)='AT'"
       ],
       "problem": {
-        "scenario": "Bộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Kiểm tra xem khung lệnh có bắt đầu bằng tiền tố `\"AT\"` hay header `0xAA` hay không mà vẫn giữ nguyên `tail`.",
+        "scenario": "Muốn xem khung có tiền tố hợp lệ, đọc qua chỉ số modulo mà vẫn giữ tail. Kiểm ca dữ liệu quấn qua cuối mảng.\n\nBộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Kiểm tra xem khung lệnh có bắt đầu bằng tiền tố `\"AT\"` hay header `0xAA` hay không mà vẫn giữ nguyên `tail`.",
         "prototype": "void ringbuf_peek_solve(void)",
         "workedExample": [
           "Bước 1: Nhờ kích thước lũy thừa 2 (16), công thức `(head - tail) & 15` luôn ra đúng số byte đang chờ ngay cả khi `head < tail` (đã bọc vòng)!. (avail=3 byte, Cần peek=2 byte)",
@@ -16113,7 +16333,7 @@ window.COURSE = {
         "+ push(0x42), push(0x99), pop() → 0x99"
       ],
       "problem": {
-        "scenario": "Bộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Cài đặt Stack tĩnh `push()`/`pop()` kiểm tra Overflow/Underflow và liên hệ với thanh ghi Stack Pointer (`SPL`/`SPH`) mọc ngược từ `0x08FF` trên ATmega328P.",
+        "scenario": "Cài stack phần mềm bằng mảng SRAM. Tách trạng thái đỉnh mảng này khỏi SP mà AVR dùng cho lời gọi hàm và ngắt.\n\nBộ đệm vòng tĩnh giúp xác định trước chi phí RAM và chính sách khi đầy trên AVR. Yêu cầu thực tế: Cài đặt Stack tĩnh `push()`/`pop()` kiểm tra Overflow/Underflow và liên hệ với thanh ghi Stack Pointer (`SPL`/`SPH`) mọc ngược từ `0x08FF` trên ATmega328P.",
         "prototype": "void stack_solve(void)",
         "workedExample": [
           "Bước 1: Stack phần mềm tăng dần (`top: 0 → 8`), ngược lại Hardware Stack của ATmega328P mọc ngược từ đáy SRAM `RAMEND = 0x08FF` xuống `0x0100`!. (top=0 (Rỗng), AVR RAMEND=0x08FF)",
@@ -16251,10 +16471,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Stack Pointer (`SP`) khởi tạo tại `RAMEND = 0x08FF` và giảm dần mỗi lệnh `PUSH` hoặc `CALL`."
+        },
+        {
+          "q": "FIFO USART0 có mảng 8 byte, quy ước chừa một ô. Sức chứa hữu dụng?",
+          "opts": [
+            "16 byte",
+            "8 byte",
+            "7 byte"
+          ],
+          "ans": 2,
+          "exp": "Ô chừa giúp phân biệt đầy với rỗng."
         }
       ],
       "remember": "Ring Buffer kích thước 2^k + biến `volatile uint8_t head, tail` là mẫu chuẩn vàng cho mọi Driver UART trên AVR.",
-      "pitfall": "Đừng quên chừa ít nhất 200–300 byte SRAM trống cho Hardware Stack và Ngắt lồng nhau!"
+      "pitfall": "Đừng quên chừa ít nhất 200–300 byte SRAM trống cho Hardware Stack và Ngắt lồng nhau!",
+      "avrContext": "Tính dung lượng hữu dụng của FIFO USART0 có một ô chừa và suy ra hành vi khi đầy. Tính riêng chi phí ngăn xếp."
     },
     {
       "id": 96,
@@ -16388,7 +16619,7 @@ window.COURSE = {
         "+ my_strlen(\"\") = 0"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Đếm số ký tự của chuỗi C-string kết thúc bằng null terminator `'\\0'` (0x00) bằng con trỏ.",
+        "scenario": "Vòng lặp main nhận một dòng từ USART0 đã kết thúc bằng byte 0. Đếm độ dài nội dung trong vùng SRAM hợp lệ.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Đếm số ký tự của chuỗi C-string kết thúc bằng null terminator `'\\0'` (0x00) bằng con trỏ.",
         "prototype": "void strlen_solve(void)",
         "workedExample": [
           "Bước 1: Chuỗi `\"AVR\"` chiếm 4 byte: `'A'(0x41), 'V'(0x56), 'R'(0x52), '\\0'(0x00)`. (Chuỗi=\"AVR\", Byte chiếm=4 byte (gồm \\0))",
@@ -16633,7 +16864,7 @@ window.COURSE = {
         "+ copy \"LED_ON\" vào dst[8] → \"LED_ON\""
       ],
       "problem": {
-        "scenario": "Sao chép chuỗi vào bộ đệm có sức chứa max_len. Khi max_len lớn hơn 0, chừa một byte cho ký tự kết thúc và cắt phần dư nếu thiếu chỗ. Khi max_len bằng 0, không ghi vào đích.",
+        "scenario": "Chép lệnh UART sang bộ đệm cố định. Khi đích có chỗ, chừa byte kết thúc; khi dung lượng bằng 0, không ghi.\n\nSao chép chuỗi vào bộ đệm có sức chứa max_len. Khi max_len lớn hơn 0, chừa một byte cho ký tự kết thúc và cắt phần dư nếu thiếu chỗ. Khi max_len bằng 0, không ghi vào đích.",
         "prototype": "void strcpy_solve(void)",
         "workedExample": [
           "Bước 1: Chỉ copy tối đa `max_len - 1` ký tự để luôn chừa 1 ô cuối cho `'\\0'`. (src=\"LED_ON\", max_len=8)",
@@ -16836,7 +17067,7 @@ window.COURSE = {
         "+ strcmp(\"ON\",\"OFF\") > 0"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: So sánh từng ký tự của hai chuỗi; trả về `0` khi trùng khớp hoàn toàn (ví dụ kiểm tra lệnh `\"START\"`).",
+        "scenario": "So lệnh đã nhận qua USART0 với chuỗi mẫu, dùng byte unsigned khi lấy hiệu hai ký tự.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: So sánh từng ký tự của hai chuỗi; trả về `0` khi trùng khớp hoàn toàn (ví dụ kiểm tra lệnh `\"START\"`).",
         "prototype": "void strcmp_solve(void)",
         "workedExample": [
           "Bước 1: Tiến song song 2 con trỏ chừng nào chưa gặp `'\\0'` và hai ký tự còn giống nhau. (a=\"ON\", b=\"ON\")",
@@ -17044,7 +17275,7 @@ window.COURSE = {
         "+ \"3210\" → \"0123\""
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Đảo ngược các ký tự trước `'\\0'` tại chỗ — bước cuối không thể thiếu khi chuyển số nguyên sang chuỗi ASCII trên AVR.",
+        "scenario": "Firmware sinh chữ số từ thấp đến cao trong SRAM. Đảo phần nội dung và giữ byte kết thúc tại cuối.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Đảo ngược các ký tự trước `'\\0'` tại chỗ — bước cuối không thể thiếu khi chuyển số nguyên sang chuỗi ASCII trên AVR.",
         "prototype": "void str_rev_solve(void)",
         "workedExample": [
           "Bước 1: Khi chia lấy dư `% 10` số `123`, ta thu được chuỗi ngược `\"321\"`, cần đảo lại tại chỗ thành `\"123\"`. (s cũ=\"3210\")",
@@ -17280,7 +17511,7 @@ window.COURSE = {
         "+ \"AABC\" → \"ABC\""
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Dùng mảng bitset 16 byte (128 bit cho toàn bộ bảng ASCII 0..127) thay vì mảng 256 byte để lọc ký tự trùng lặp ngay trên chuỗi gốc.",
+        "scenario": "Rút gọn chuỗi ASCII nhận qua UART tại chỗ. Nếu dùng bảng 128 bit, kiểm byte đầu vào nằm trong dải ASCII.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Dùng mảng bitset 16 byte (128 bit cho toàn bộ bảng ASCII 0..127) thay vì mảng 256 byte để lọc ký tự trùng lặp ngay trên chuỗi gốc.",
         "prototype": "void str_dedup_solve(void)",
         "workedExample": [
           "Bước 1: Chỉ tốn 16 byte SRAM thay vì 256 byte! Bit của ký tự `c` nằm ở `seen[c >> 3] & (1U << (c & 7))`. (SRAM bitset=16 byte, Input=\"AABC\")",
@@ -17584,7 +17815,7 @@ window.COURSE = {
         "+ \"M1:90%\" → alpha=1, digit=3, sym=2"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Phân loại ký tự bằng so sánh mã ASCII trực tiếp (`'0'..'9'`, `'A'..'Z'`, `'a'..'z'`) không cần kéo thư viện `<ctype.h>` lớn.",
+        "scenario": "Đếm loại ký tự trong dòng UART dựa trên phạm vi ASCII. Tách chữ cái, chữ số và các ký hiệu ngoài hai nhóm.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Phân loại ký tự bằng so sánh mã ASCII trực tiếp (`'0'..'9'`, `'A'..'Z'`, `'a'..'z'`) không cần kéo thư viện `<ctype.h>` lớn.",
         "prototype": "void count_chars_solve(void)",
         "workedExample": [
           "Bước 1: Khởi tạo 3 bộ đếm 8-bit. (Chuỗi=\"M1:90%\", Bộ đếm=0, 0, 0)",
@@ -17765,7 +17996,7 @@ window.COURSE = {
         "+ \"AVR_OK\" → \"avr_ok\""
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Chuẩn hóa lệnh UART (ví dụ `\"START\"` → `\"start\"`) bằng nhận xét thú vị trong bảng ASCII: chữ thường chỉ khác chữ hoa đúng Bit 5 (+32 = 0x20)!",
+        "scenario": "Chuẩn hóa lệnh ASCII của USART0. Chỉ bật bit 5 với ký tự trong A..Z để dấu câu không bị đổi.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Chuẩn hóa lệnh UART (ví dụ `\"START\"` → `\"start\"`) bằng nhận xét thú vị trong bảng ASCII: chữ thường chỉ khác chữ hoa đúng Bit 5 (+32 = 0x20)!",
         "prototype": "void tolower_solve(void)",
         "workedExample": [
           "Bước 1: Mã ASCII `'A'` = 65 (0x41), `'a'` = 97 (0x61). ('A'=0x41, 'a'=0x61)",
@@ -18014,7 +18245,7 @@ window.COURSE = {
         "+ \"120,45,300\" → {120, 45, 300}"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Phân tích chuỗi CSV gửi từ Serial Monitor (vd `\"120,45,300\"` cho Kp, Ki, Kd) trực tiếp vào mảng `int16_t vals[3]` mà không dùng `strtok()` hay `sscanf()`.",
+        "scenario": "Dòng cấu hình PID từ UART chứa ba số. Kiểm số trường và giới hạn mảng trước khi lưu từng giá trị vào SRAM.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Phân tích chuỗi CSV gửi từ Serial Monitor (vd `\"120,45,300\"` cho Kp, Ki, Kd) trực tiếp vào mảng `int16_t vals[3]` mà không dùng `strtok()` hay `sscanf()`.",
         "prototype": "void parse_csv_solve(void)",
         "workedExample": [
           "Bước 1: Chuỗi CSV nhận từ Serial Monitor chứa 3 hệ số PID `Kp=120, Ki=45, Kd=300`. (s=\"120,45,300\", idx=0)",
@@ -18205,7 +18436,7 @@ window.COURSE = {
         "+ \"+128\" → 128"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Bỏ khoảng trắng đầu, nhận diện dấu `'-'`/`'+'`, rồi tích lũy chữ số `res = res * 10 + (c - '0')`.",
+        "scenario": "Chuyển tham số UART sang int16_t. Kiểm dấu và miền -32768 đến 32767 trước khi lưu.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Bỏ khoảng trắng đầu, nhận diện dấu `'-'`/`'+'`, rồi tích lũy chữ số `res = res * 10 + (c - '0')`.",
         "prototype": "void atoi_solve(void)",
         "workedExample": [
           "Bước 1: Gặp `'-'` → đặt `sign = -1` và dịch `s++` sang `'4'`. (s=\"-450\", sign=-1)",
@@ -18370,7 +18601,7 @@ window.COURSE = {
         "- \"12A\" → Mixed"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Xác thực dữ liệu đầu vào trước khi gọi `my_atoi` để không bị nhận nhầm chuỗi rác `\"12AB\"` thành số `12`.",
+        "scenario": "Lệnh UART chấp nhận chuỗi thuần chữ hoặc thuần số theo quy ước. Thử chuỗi trộn, rỗng và dấu câu.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Xác thực dữ liệu đầu vào trước khi gọi `my_atoi` để không bị nhận nhầm chuỗi rác `\"12AB\"` thành số `12`.",
         "prototype": "void is_num_alpha_solve(void)",
         "workedExample": [
           "Bước 1: Duyệt qua chuỗi `\"2026\"`: mọi ký tự đều nằm trong `'0'. (Input=\"2026\", is_num=1)"
@@ -18586,7 +18817,7 @@ window.COURSE = {
         "+ \"-3.5\" → -3.5f"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Tách phần nguyên (`24`) và phần thập phân (`75 / 100.0f`) — đồng thời giới thiệu kỹ thuật Fixed-Point (`2475` trăm độ) tiết kiệm CPU trên AVR!",
+        "scenario": "Chuyển mẫu nhiệt dạng văn bản nhận qua UART. Nếu dùng số cố định, ghi rõ hệ số tỷ lệ và miền lưu.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Tách phần nguyên (`24`) và phần thập phân (`75 / 100.0f`) — đồng thời giới thiệu kỹ thuật Fixed-Point (`2475` trăm độ) tiết kiệm CPU trên AVR!",
         "prototype": "void atof_solve(void)",
         "workedExample": [
           "Bước 1: Đọc phần nguyên trước dấu `'. (Phần nguyên=24, Phần lẻ=0.75)",
@@ -18832,7 +19063,7 @@ window.COURSE = {
         "+ \"SET,PWM,180\" → [\"SET\",\"PWM\",\"180\"]"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Ghi đè ký tự phân cách (`','` hoặc `' '`) bằng `'\\0'` và lưu con trỏ đầu từng token vào `char *tokens[4]` — an toàn Re-entrant (khác với `strtok` dùng biến static nội bộ!).",
+        "scenario": "Tách các trường lệnh trong bộ đệm SRAM bằng byte phân cách. Quy định cách xử lý trường rỗng và giới hạn đầu ra.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Ghi đè ký tự phân cách (`','` hoặc `' '`) bằng `'\\0'` và lưu con trỏ đầu từng token vào `char *tokens[4]` — an toàn Re-entrant (khác với `strtok` dùng biến static nội bộ!).",
         "prototype": "void split_str_solve(void)",
         "workedExample": [
           "Bước 1: Mảng `line[]` nằm trong SRAM (có thể ghi đè được). (line[]=\"SET,PWM,180\", tok[4]=Mảng con trỏ)",
@@ -19056,7 +19287,7 @@ window.COURSE = {
         "+ $GPGGA,123519,2101.7,N,10550.5,E → 12:35:19, 2101.7N, 10550.5E"
       ],
       "problem": {
-        "scenario": "Khi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Tách các trường phân cách bởi dấu phẩy từ câu chuẩn NMEA `$GPGGA,123519,2101.7,N,10550.5,E,...` nhận từ module NEO-6M qua USART0.",
+        "scenario": "Tách trường UTC và tọa độ từ dòng NMEA đã nhận qua USART0. Xác nhận checksum trước khi dùng bản ghi trong firmware.\n\nKhi giao tiếp module GPS NEO-6M, Bluetooth HC-05 hoặc Serial Monitor qua USART0, bạn cần xử lý chuỗi ASCII siêu gọn nhẹ, chống tràn buffer và không dùng `sscanf`/`malloc`. Bài toán: Tách các trường phân cách bởi dấu phẩy từ câu chuẩn NMEA `$GPGGA,123519,2101.7,N,10550.5,E,...` nhận từ module NEO-6M qua USART0.",
         "prototype": "void gps_nmea_solve(void)",
         "workedExample": [
           "Bước 1: Chuẩn NMEA-0183: trường 0=`$GPGGA`, trường 1=UTC `12:35:19`, trường 2-3=Vĩ độ `21°01. (Header=$GPGGA, UTC=12:35:19)",
@@ -19239,7 +19470,7 @@ window.COURSE = {
         "+ \"LED ON\" → PORTB |= (1<<PB5)"
       ],
       "problem": {
-        "scenario": "Trong phòng lab, bạn muốn chỉnh tốc độ PWM động cơ DC hoặc bật/tắt LED trực tiếp từ Serial Monitor mà không cần nạp lại code mỗi lần sửa số. Hãy viết bộ phân tích chuỗi lệnh nhận từ UART có dạng `\"PWM 128\"` hoặc `\"LED 1\"`: tách tên lệnh (`argv[0]`) và tham số (`argv[1]`), chuyển tham số sang số nguyên và ghi trực tiếp vào thanh ghi `OCR0A` (hoặc `PORTB`).",
+        "scenario": "Nhận lệnh từ USART0. Ánh xạ LED sang PB5 và PWM sang driver timer. Xác thực tham số trước khi đổi trạng thái ngoại vi.\n\nTrong phòng lab, bạn muốn chỉnh tốc độ PWM động cơ DC hoặc bật/tắt LED trực tiếp từ Serial Monitor mà không cần nạp lại code mỗi lần sửa số. Hãy viết bộ phân tích chuỗi lệnh nhận từ UART có dạng `\"PWM 128\"` hoặc `\"LED 1\"`: tách tên lệnh (`argv[0]`) và tham số (`argv[1]`), chuyển tham số sang số nguyên và ghi trực tiếp vào thanh ghi `OCR0A` (hoặc `PORTB`).",
         "prototype": "uint8_t shell_exec(char *line)",
         "workedExample": [
           "Bước 1: Người dùng gõ `PWM 128` trên Terminal PC gửi qua USART0. (argv[0]=\"PWM\", argv[1]=\"128\")",
@@ -19355,10 +19586,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "`strcmp` trả về 0 khi hai chuỗi giống hệt nhau; `a == b` chỉ so sánh địa chỉ 2 con trỏ!"
+        },
+        {
+          "q": "char line[8] trong SRAM chứa tối đa bao nhiêu byte nội dung chuỗi C?",
+          "opts": [
+            "7",
+            "8",
+            "9"
+          ],
+          "ans": 0,
+          "exp": "Cần một byte cho ký tự kết thúc."
         }
       ],
       "remember": "Giữ chuỗi hằng trong Flash bằng `PSTR()`, luôn chừa 1 byte cho `'\\0'` và kiểm tra biên chống tràn.",
-      "pitfall": "Quên byte `'\\0'` là nguyên nhân phổ biến nhất gây in rác trên Serial Monitor!"
+      "pitfall": "Quên byte `'\\0'` là nguyên nhân phổ biến nhất gây in rác trên Serial Monitor!",
+      "avrContext": "Tách chuỗi nhận đang trong SRAM khỏi bảng chuỗi hằng ở Flash. Kiểm byte kết thúc và hàm đọc vùng nhớ đúng."
     },
     {
       "id": 111,
@@ -19409,10 +19651,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Các hàm tự viết (`my_atoi`, `my_itoa`, tokenizer) chỉ tốn vài chục byte Flash và chạy nhanh hơn nhiều."
+        },
+        {
+          "q": "Dòng nhận từ USART0 vượt bộ đệm. Cách nào đồng bộ lại ở dòng sau?",
+          "opts": [
+            "Ghi tiếp qua cuối mảng",
+            "Bỏ phần dư đến LF rồi nhận dòng mới",
+            "Coi đoạn đuôi là lệnh mới"
+          ],
+          "ans": 1,
+          "exp": "LF xác định ranh giới để đặt lại bộ phân tích."
         }
       ],
       "remember": "Giữ chuỗi hằng trong Flash bằng `PSTR()`, luôn chừa 1 byte cho `'\\0'` và kiểm tra biên chống tràn.",
-      "pitfall": "Quên byte `'\\0'` là nguyên nhân phổ biến nhất gây in rác trên Serial Monitor!"
+      "pitfall": "Quên byte `'\\0'` là nguyên nhân phổ biến nhất gây in rác trên Serial Monitor!",
+      "avrContext": "Phân biệt cấu trúc dòng CSV, NMEA và lệnh UART. Tính cách phục hồi sau dòng quá dài hoặc sai định dạng."
     },
     {
       "id": 112,
@@ -19532,7 +19785,7 @@ window.COURSE = {
         "+ bswap32(0x12345678) = 0x78563412"
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Chuyển đổi giữa Little-Endian (ATmega328P) và Big-Endian (cảm biến I2C MPU6050, BMP280, giao thức mạng Modbus/TCP).",
+        "scenario": "Cảm biến gửi byte cao trước qua SPI. Ghép theo giao thức rồi phân biệt với cách AVR lưu số trong SRAM.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Chuyển đổi giữa Little-Endian (ATmega328P) và Big-Endian (cảm biến I2C MPU6050, BMP280, giao thức mạng Modbus/TCP).",
         "prototype": "void endian_swap_solve(void)",
         "workedExample": [
           "Bước 1: Đổi chỗ 2 byte của `uint16_t`: `0x1234` → `0x3412`. (le16=0x1234, be16=0x3412)",
@@ -19694,7 +19947,7 @@ window.COURSE = {
         "+ 0xA5 → \"10100101\""
       ],
       "problem": {
-        "scenario": "Viết tám ký tự nhị phân tương ứng với val vào binary[9]. Duyệt từ bit 7 xuống bit 0, ghi '1' nếu bit bật, nếu không ghi '0'. Byte cuối phải là ký tự kết thúc. Có thể gửi chuỗi qua UART sau khi đã có driver.",
+        "scenario": "Chuẩn bị chuỗi nhị phân của byte chụp từ PORTB để gửi USART0. Duyệt bit 7 đến 0 và dành byte kết thúc.\n\nViết tám ký tự nhị phân tương ứng với val vào binary[9]. Duyệt từ bit 7 xuống bit 0, ghi '1' nếu bit bật, nếu không ghi '0'. Byte cuối phải là ký tự kết thúc. Có thể gửi chuỗi qua UART sau khi đã có driver.",
         "prototype": "void print_bin_solve(void)",
         "workedExample": [
           "Bước 1: Dùng `int8_t i` (có dấu!) cho vòng lặp đếm ngược về 0 để KHÔNG bị lỗi underflow vô tận của `uint8_t`!. (val=0xA5, Kiểu i=int8_t (an toàn))",
@@ -19832,7 +20085,7 @@ window.COURSE = {
         "+ 218 base 16 → \"DA\""
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dùng bảng ký tự `\"0123456789ABCDEF\"` và phép dịch/chia theo cơ số `base` (2 hoặc 16) để xuất chuỗi siêu gọn.",
+        "scenario": "Đổi số đo thành cơ số 2 hoặc 16 trong bộ đệm SRAM trước khi in UART. Kiểm số 0 và kích thước đích.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dùng bảng ký tự `\"0123456789ABCDEF\"` và phép dịch/chia theo cơ số `base` (2 hoặc 16) để xuất chuỗi siêu gọn.",
         "prototype": "void dec_to_base_solve(void)",
         "workedExample": [
           "Bước 1: Với cơ số 16 (lũy thừa 2), thay vì dùng phép chia chậm `/ 16` và `% 16`, ta dùng `>> 4` và `& 0x0F`!. (n=218 (0xDA), Nibble cao/thấp=13('D') / 10('A'))",
@@ -20117,7 +20370,7 @@ window.COURSE = {
         "+ 0 → \"0\""
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Chuyển số nguyên có dấu `int16_t` (vd `-1250`) thành chuỗi ASCII `\"-1250\"` bằng chia 10 lặp và đảo chuỗi tại chỗ.",
+        "scenario": "Hiển thị ADC/RPM qua LCD hoặc UART. Sinh chữ số trong vùng SRAM hữu hạn và cẩn thận với giá trị âm nhỏ nhất.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Chuyển số nguyên có dấu `int16_t` (vd `-1250`) thành chuỗi ASCII `\"-1250\"` bằng chia 10 lặp và đảo chuỗi tại chỗ.",
         "prototype": "void itoa_solve(void)",
         "workedExample": [
           "Bước 1: Số `int16_t` ngắn nhất là `-32768` (6 ký tự + 1 `'\\0'` = 7 byte). (n=-1250, buf=char[7])",
@@ -20282,7 +20535,7 @@ window.COURSE = {
         "+ \"101101\" → 45"
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dịch trái 1 bit rồi cộng bit mới: `val = (val << 1) | (*p - '0')`.",
+        "scenario": "Nhận chuỗi bit qua UART để cấu hình từ dữ liệu phần mềm. Kiểm từng ký tự và tràn trước khi dịch.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dịch trái 1 bit rồi cộng bit mới: `val = (val << 1) | (*p - '0')`.",
         "prototype": "void binstr_to_int_solve(void)",
         "workedExample": [
           "Bước 1: Mỗi ký tự `'0'` hoặc `'1'` dịch giá trị cũ sang trái 1 bit (nhân 2) rồi OR bit mới vào bit 0. (s=\"101101\", Kỳ vọng=45 (0x2D))",
@@ -20403,7 +20656,7 @@ window.COURSE = {
         "+ \"0xFF\" → 255"
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dịch trái 4 bit (`val << 4`) rồi ghép giá trị nibble (0..15) từ ký tự `'0'..'9'`, `'A'..'F'`, `'a'..'f'`.",
+        "scenario": "Giải mã một trường hex nhận qua UART của công cụ nạp. Kiểm toàn bộ ký tự và miền đích trước khi dùng giá trị.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Dịch trái 4 bit (`val << 4`) rồi ghép giá trị nibble (0..15) từ ký tự `'0'..'9'`, `'A'..'F'`, `'a'..'f'`.",
         "prototype": "void hexstr_to_int_solve(void)",
         "workedExample": [
           "Bước 1: Xử lý `'2'` → `val = 0x02`; sau đó xử lý `'F'` (`'F' - 'A' + 10 = 15`) → `val = (0x02 << 4) | 0x0F = 0x2F` (47). (s=\"2F\", 'F' → nibble=15 (0xF))",
@@ -20538,7 +20791,7 @@ window.COURSE = {
         "+ 0x03A5 → \"03A5\""
       ],
       "problem": {
-        "scenario": "Hàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Lần lượt trích 4 nibble từ bit 12 xuống bit 0 bằng `(val >> shift) & 0x0F` và tra bảng `\"0123456789ABCDEF\"`.",
+        "scenario": "Định dạng giá trị mẫu 16 bit để xem qua USART0. Giữ đủ bốn chữ số hex, kể cả số 0 đầu.\n\nHàm `printf`/`sprintf` chuẩn ngốn ~2 KB Flash trên ATmega328P. Bạn cần tự viết bộ chuyển đổi dữ liệu nhị phân/hex/thập phân và đổi Endianness cho cảm biến I2C/SPI. Yêu cầu: Lần lượt trích 4 nibble từ bit 12 xuống bit 0 bằng `(val >> shift) & 0x0F` và tra bảng `\"0123456789ABCDEF\"`.",
         "prototype": "void int_to_hex_solve(void)",
         "workedExample": [
           "Bước 1: Trích lần lượt `0`, `3`, `A`, `5` → chuỗi `\"03A5\"` dài cố định 4 ký tự, rất đẹp khi in bảng dump bộ nhớ SRAM qua UART!. (v=0x03A5, Output=\"03A5\")"
@@ -20696,10 +20949,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "Dịch trái 4 bit chính là nhân 2^4 = 16."
+        },
+        {
+          "q": "SPI nhận 0x12 rồi 0x34 theo thứ tự byte cao trước. Ghép được gì?",
+          "opts": [
+            "0x1200",
+            "0x3412",
+            "0x1234"
+          ],
+          "ans": 2,
+          "exp": "Dịch byte cao 8 bit rồi OR byte thấp."
         }
       ],
       "remember": "Tự viết các hàm in Hex/Bin/Dec giúp bạn có hệ thống UART Debug gọn nhẹ chỉ vài trăm byte Flash.",
-      "pitfall": "Chú ý vòng lặp đếm ngược phải dùng kiểu có dấu (`int8_t`)!"
+      "pitfall": "Chú ý vòng lặp đếm ngược phải dùng kiểu có dấu (`int8_t`)!",
+      "avrContext": "So sánh thứ tự byte của AVR với thứ tự byte trên dây. Dự đoán chuỗi hiển thị sau khi chuyển sang hex."
     },
     {
       "id": 120,
@@ -20749,10 +21013,21 @@ window.COURSE = {
           ],
           "ans": 1,
           "exp": "1 × 16 + 10 = 26."
+        },
+        {
+          "q": "In mã ADC 0x03A5 qua UART thành chuỗi bốn chữ số hex. Cần bao nhiêu byte?",
+          "opts": [
+            "5",
+            "4",
+            "8"
+          ],
+          "ans": 0,
+          "exp": "Bốn ký tự cộng byte kết thúc."
         }
       ],
       "remember": "Tự viết các hàm in Hex/Bin/Dec giúp bạn có hệ thống UART Debug gọn nhẹ chỉ vài trăm byte Flash.",
-      "pitfall": "Chú ý vòng lặp đếm ngược phải dùng kiểu có dấu (`int8_t`)!"
+      "pitfall": "Chú ý vòng lặp đếm ngược phải dùng kiểu có dấu (`int8_t`)!",
+      "avrContext": "Đo Flash của bản build AVR khi chọn cách định dạng nhật ký USART0. Tính cả dung lượng bộ đệm ở SRAM."
     },
     {
       "id": 121,
@@ -20855,7 +21130,7 @@ window.COURSE = {
         "- tìm 0x50 → idx=-1"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Duyệt tuần tự mảng nhỏ (< 16 phần tử) để tìm mã thiết bị I2C hoặc mã lỗi.",
+        "scenario": "Duyệt danh sách địa chỉ thiết bị TWI đã lưu trong SRAM. Phân biệt chỉ số mảng tìm được với địa chỉ trên bus.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Duyệt tuần tự mảng nhỏ (< 16 phần tử) để tìm mã thiết bị I2C hoặc mã lỗi.",
         "prototype": "void linear_search_solve(void)",
         "workedExample": [
           "Bước 1: Danh sách 4 thiết bị I2C quen thuộc trên ATmega328P: LCD PCF8574 (0x27), OLED SSD1306 (0x3C), MPU6050 (0x68), BMP280 (0x76). (Tìm=0x68 (MPU6050))",
@@ -21060,7 +21335,7 @@ window.COURSE = {
         "+ target=590 → idx=3 (30°C)"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Tra cứu giá trị ADC trong bảng tra đã sắp xếp lưu trong Flash `PROGMEM` bằng Binary Search — chỉ tốn tối đa 7 bước cho bảng 128 điểm (thay vì tính hàm `log()` float nặng nề!).",
+        "scenario": "Lấy mã ADC từ PC0 rồi tra bảng NTC có thứ tự trong Flash. Dùng hàm đọc PROGMEM và xác định chiều đơn điệu.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Tra cứu giá trị ADC trong bảng tra đã sắp xếp lưu trong Flash `PROGMEM` bằng Binary Search — chỉ tốn tối đa 7 bước cho bảng 128 điểm (thay vì tính hàm `log()` float nặng nề!).",
         "prototype": "void binary_search_solve(void)",
         "workedExample": [
           "Bước 1: Bảng tra ADC đã sắp tăng dần (ứng với 0°C, 10°C, 20°C, 30°C, 40°C, 50°C). (target=590, lo / hi=0 / 5)",
@@ -21281,7 +21556,7 @@ window.COURSE = {
         "+ {410,120,880,350,790} → min=120, max=880, thresh=500"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Tìm đồng thời giá trị nhỏ nhất (nền đen) và lớn nhất (nền trắng) từ mảng mẫu ADC để tính ngưỡng tự động `(min + max) >> 1`.",
+        "scenario": "Hiệu chuẩn đầu đọc line tại ADC0 bằng min/max của dãy mẫu. Kiểm mảng rỗng trước khi đọc phần tử đầu.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Tìm đồng thời giá trị nhỏ nhất (nền đen) và lớn nhất (nền trắng) từ mảng mẫu ADC để tính ngưỡng tự động `(min + max) >> 1`.",
         "prototype": "void minmax_solve(void)",
         "workedExample": [
           "Bước 1: LUÔN khởi tạo `mn = mx = s[0]` (KHÔNG khởi tạo `mn = 0` vì mọi giá trị ADC dương đều lớn hơn 0!). (mn / mx đầu=410 / 410)",
@@ -21776,7 +22051,7 @@ window.COURSE = {
         "+ {512,1023,508,515,510} → median = 512"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp 5 mẫu ADC tại chỗ bằng Insertion Sort (không đệ quy, không tốn Stack như QuickSort!) rồi lấy phần tử giữa `a[2]` làm bộ lọc Median loại bỏ nhiễu gai!",
+        "scenario": "Timer lấy năm mẫu ADC rồi main sắp xếp để lấy mẫu ở giữa. Xem tác động của việc sắp xếp tại chỗ lên thứ tự lấy mẫu.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp 5 mẫu ADC tại chỗ bằng Insertion Sort (không đệ quy, không tốn Stack như QuickSort!) rồi lấy phần tử giữa `a[2]` làm bộ lọc Median loại bỏ nhiễu gai!",
         "prototype": "void insertion_sort_solve(void)",
         "workedExample": [
           "Bước 1: Cảm biến đọc 5 mẫu ADC 10-bit vào SRAM. (a[5]=[512,1023,508,515,510], Nhiễu gai=a[1] = 1023)",
@@ -21962,7 +22237,7 @@ window.COURSE = {
         "+ {2,7,1,5} → {7,5,2,1}"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp mảng mức ưu tiên hoặc cường độ tín hiệu giảm dần tại chỗ bằng Selection/Insertion Sort.",
+        "scenario": "Sắp xếp bản sao bảng ưu tiên tác vụ trong SRAM giảm dần. Ưu tiên ứng dụng không thay đổi thứ tự vector AVR.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp mảng mức ưu tiên hoặc cường độ tín hiệu giảm dần tại chỗ bằng Selection/Insertion Sort.",
         "prototype": "void sort_desc_solve(void)",
         "workedExample": [
           "Bước 1: Chỉ cần đổi dấu so sánh thành `>` trong vòng lặp chèn để đưa mức ưu tiên cao nhất (7) lên đầu mảng. (Kết quả=[7, 5, 2, 1])"
@@ -22147,7 +22422,7 @@ window.COURSE = {
         "+ {40,10,50,20,30}, k=2 → 2nd min=20, 2nd max=40"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp mảng nhỏ tại chỗ rồi truy cập trực tiếp `a[k - 1]` (nhỏ thứ K) và `a[n - k]` (lớn thứ K).",
+        "scenario": "Tìm thứ hạng mẫu ADC trong bộ đệm. Kiểm miền K và cách tính khi hai mẫu trùng giá trị.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Sắp xếp mảng nhỏ tại chỗ rồi truy cập trực tiếp `a[k - 1]` (nhỏ thứ K) và `a[n - k]` (lớn thứ K).",
         "prototype": "void kth_elem_solve(void)",
         "workedExample": [
           "Bước 1: Sau khi sắp tăng `{10, 20, 30, 40, 50}`: nhỏ thứ 2 là `a[1] = 20`, lớn thứ 2 là `a[5-2] = a[3] = 40`. (k=2, Nhỏ thứ 2=20)"
@@ -22322,7 +22597,7 @@ window.COURSE = {
         "+ {15,82,40,95,67,88} → 95, 88, 82"
       ],
       "problem": {
-        "scenario": "Để lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Duy trì đúng 3 biến `top1 >= top2 >= top3` trong 1 vòng lặp duy nhất — không làm thay đổi mảng gốc và chỉ tốn 3 thanh ghi CPU!",
+        "scenario": "Duyệt một lượt qua dãy mẫu hoặc RSSI đã lấy từ SPI. Quy định giá trị trùng và số mẫu tối thiểu để chọn đủ ba vị trí.\n\nĐể lọc nhiễu gai ADC (Median Filter) hoặc tra bảng nhiệt độ NTC lưu trong Flash `PROGMEM` trên ATmega328P, bạn cần thuật toán tìm kiếm/sắp xếp không đệ quy, tốn O(1) Stack. Bài toán: Duy trì đúng 3 biến `top1 >= top2 >= top3` trong 1 vòng lặp duy nhất — không làm thay đổi mảng gốc và chỉ tốn 3 thanh ghi CPU!",
         "prototype": "void top3_solve(void)",
         "workedExample": [
           "Bước 1: Mỗi phần tử `v`: nếu `v > t1` thì đẩy `t3=t2; t2=t1; t1=v;`; nếu `v > t2` thì đẩy `t3=t2; t2=v;`; nếu `v > t3` thì `t3=v;`. (Độ phức tạp=O(N) / O(1) RAM)"
@@ -22453,10 +22728,21 @@ window.COURSE = {
           ],
           "ans": 2,
           "exp": "2^7 = 128 nên Binary Search chỉ cần tối đa 7 bước."
+        },
+        {
+          "q": "Năm mẫu ADC0 là 9, 1, 8, 2, 3. Trung vị bằng bao nhiêu?",
+          "opts": [
+            "8",
+            "3",
+            "2"
+          ],
+          "ans": 1,
+          "exp": "Sau sắp xếp 1, 2, 3, 8, 9, mẫu giữa bằng 3."
         }
       ],
       "remember": "Tránh các thuật toán đệ quy sâu (QuickSort) hoặc cần mảng phụ (MergeSort) trên ATmega328P.",
-      "pitfall": "Luôn chọn thuật toán O(1) bộ nhớ phụ và không đệ quy cho hệ thống nhúng 8-bit!"
+      "pitfall": "Luôn chọn thuật toán O(1) bộ nhớ phụ và không đệ quy cho hệ thống nhúng 8-bit!",
+      "avrContext": "Tra bảng trong Flash cho ADC và tính trung vị trên mảng SRAM. Chọn cách đọc bộ nhớ và thứ tự dữ liệu cho từng thuật toán."
     }
   ],
   "quickGuides": [

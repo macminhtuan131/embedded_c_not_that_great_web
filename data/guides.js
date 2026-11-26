@@ -5,11 +5,11 @@
     guides.push({id,moduleId,title,summary,source:base+"/"+slug,sections,guide:true});
   };
 
-  add("bat-dau",null,"Bắt đầu học C nhúng","Chọn môi trường thực hành và biết cách kiểm kết quả của một bài.", "embedded-c", [
-    ["Bắt đầu từ C thuần","Nếu còn lúng túng với hàm, mảng hoặc con trỏ, hãy ôn phần Chuẩn bị với C. Khi vào kho này, đọc hướng dẫn của chủ đề trước. Sau đó thử một bài nhỏ, ghi kết quả dự đoán rồi so với lời giải từng bước."],
-    ["Chọn môi trường theo bài","Các bài chạy web dùng C17 biên dịch sang WebAssembly. Dùng chúng để kiểm thuật toán và dữ liệu đầu vào, đầu ra. Các bài Lab AVR có mã .c để tải. Chọn đúng ATmega328P trong Microchip Studio hoặc dùng avr-gcc, rồi xem giá trị bằng debugger hoặc chạy trên bo mạch."],
-    ["Ba điểm dễ nhầm","Kích thước int phụ thuộc nền tảng. Với avr-gcc thông thường trên ATmega328P, int rộng 16 bit. Thanh ghi PORTB là chốt đầu ra, còn mức quan sát trên chân phụ thuộc DDRB và cấu hình phần cứng. Đối chiếu các bit đặc biệt trong datasheet trước khi thao tác với thanh ghi thật."],
-    ["Đọc đề theo thứ tự","Xác định kiểu dữ liệu, miền đầu vào và kết quả mong đợi. Thử một ca bình thường và một ca ở giới hạn. Ví dụ khi đặt bit thứ k trong một byte, thử k = 0, k = 7 và trường hợp bit đã bằng 1."]
+  add("bat-dau",null,"Bắt đầu trên ATmega328P","Xác định đầu vào, đầu ra và thanh ghi rồi chạy firmware đầu tiên.","embedded-c", [
+    ["Đọc sơ đồ theo tên chân của chip","Với Arduino Uno R3, PD2 là D2, PB5 là D13 và PC0 là A0. Khi dùng chip rời, tra chân theo gói trên datasheet. Giữ chung GND. Nếu dùng LED rời, mắc thêm điện trở hạn dòng."],
+    ["Đọc nút tác động mức thấp","DDRD2 bằng 0 để chân PD2 là input. Đặt PORTD2 lên 1 để bật kéo lên. Đọc PIND2 để biết mức thực tế: nhấn nối GND cho 0, nhả cho 1. Chốt PORTD2 tiếp tục bằng 1 ở cả hai tình huống."],
+    ["Cấu hình chân LED và kiểm","Đặt DDRB5 để lái PB5. Dự đoán PORTB5 trước mỗi ca, chọn Chạy HEX mẫu và đọc bảng. Mở ảnh chụp từng bit để theo dõi vai trò của từng thanh ghi."],
+    ["Sửa firmware","Mở phần Soạn và tải mã C để lấy main.c. Biên dịch bằng avr-gcc với -mmcu=atmega328p. Tạo tệp Intel HEX bằng avr-objcopy, sau đó nạp qua Nạp HEX của bạn. Cùng tệp HEX có thể dùng để nạp Flash trên bo phù hợp."]
   ]);
   add("so-hoc","m1_arith","Tràn số, số nhớ và chuyển kiểu","Giải thích giá trị trước và sau khi lưu vào kiểu hẹp.", "arithmetic-edge-cases", [
     ["Tính rộng, lưu hẹp","Hai byte 200 và 100 có tổng 300. Giữ tổng trong uint16_t rồi chuyển sang uint8_t. Kết quả còn 44 vì đổi sang kiểu không dấu rộng 8 bit lấy giá trị theo modulo 256.",

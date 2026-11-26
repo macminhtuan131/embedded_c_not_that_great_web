@@ -1,14 +1,39 @@
-# Xưởng Nhúng · GitHub Pages
+# Xưởng Nhúng · ATmega328P
 
-Bản web tĩnh của khóa học C nhúng tiếng Việt. Tệp index.html nằm ở gốc và đã có đủ ảnh, bài học, mã JavaScript cùng trình biên dịch C chạy trong trình duyệt.
+Khóa học C bare-metal bằng tiếng Việt dùng ATmega328P ở 16 MHz. Phần đầu dạy biến, vòng lặp, hàm, con trỏ và bộ nhớ qua tín hiệu GPIO, USART0, ADC0 và EEPROM. Phần sau triển khai thanh ghi, ngắt, timer, PWM, SPI, TWI và lịch hợp tác.
 
-## Đăng website trên GitHub
+Website có 53 bài chính, 102 bài tập firmware theo các chủ đề EWskills, 26 bài trắc nghiệm, 13 hướng dẫn và 5 dự án. Từng bài firmware có nhiệm vụ, nguồn vào, điểm đo, mã khởi đầu, lời giải C và firmware Intel HEX đã tạo cho ATmega328P. Hướng dẫn, trắc nghiệm và dự án có ca thực hành đi kèm.
 
-1. Giải nén ZIP. Tạo repository trên GitHub, ví dụ xuong-nhung. Với GitHub Free, chọn repository công khai để dùng GitHub Pages.
-2. Thêm toàn bộ tệp và thư mục đã giải nén vào gốc repository rồi commit lên main. Tệp index.html và .nojekyll cần nằm ngay ở gốc, cùng cấp với assets, css, data, js và vendor.
-3. Mở Settings → Pages. Ở Source, chọn Deploy from a branch. Chọn main, chọn /(root) rồi bấm Save.
-4. Khi GitHub triển khai xong, bấm Visit site trong Settings → Pages. Với repository dự án, địa chỉ thường có dạng https://TEN-TAI-KHOAN.github.io/TEN-REPO/.
+## Thực hành
 
-[Hướng dẫn cấu hình nguồn xuất bản của GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+1. Mở index.html bằng trình duyệt hoặc chạy một máy chủ tĩnh từ thư mục dự án.
+2. Chọn ca. Đọc mức chân, byte UART hoặc điện áp ADC0 cấp vào. Dự đoán giá trị rồi bấm **Chạy HEX mẫu**. Đối chiếu cột **Đo được** và mở ảnh chụp từng chân ở cổng B, C, D.
+3. Tải main.c và sửa theo đề. Dùng AVR-GCC tạo HEX rồi bấm **Nạp HEX của bạn** để chạy các ca. Dùng tên chân của ATmega328P và đối chiếu sơ đồ bo trước khi đấu mạch.
 
-Tiến độ và mã nháp được lưu trong trình duyệt theo địa chỉ website. Bản trên GitHub Pages có bộ nhớ riêng so với bản đã mở ở địa chỉ khác. Lần chạy C đầu tiên cần tải trình biên dịch từ thư mục vendor.
+    avr-gcc -std=gnu11 -Os -mmcu=atmega328p -DF_CPU=16000000UL main.c -o main.elf
+    avr-objcopy -O ihex -R .eeprom main.elf main.hex
+
+AVR8js thực thi lệnh AVR và mô phỏng các thanh ghi, ngoại vi cần cho ca kiểm. USART, SPI và TWI cung cấp dữ liệu ở mức byte. Các bài kiểm PWM dùng sai số một nhịp Timer0 khi đo độ rộng. Với bo thật, đo riêng thời gian, điện áp, đấu dây và tín hiệu điện.
+
+Tiến độ và mã AVR nháp được lưu trong trình duyệt theo địa chỉ website.
+
+## Đưa lên GitHub Pages
+
+1. Giải nén ZIP. Tải toàn bộ nội dung bên trong lên gốc nhánh main, cùng cấp với index.html. Giữ tệp .nojekyll. Nếu GitHub bỏ qua tệp bắt đầu bằng dấu chấm, tạo tệp rỗng .nojekyll ở gốc repository.
+2. Vào **Settings → Pages**. Dùng **Deploy from a branch → main → /(root)**.
+3. Khi GitHub báo triển khai xong, mở website ở **Settings → Pages → Visit site**.
+
+## Tạo lại bản tĩnh từ mã nguồn
+
+Chạy npm run build để tạo thư mục dist. Để tái tạo các HEX mẫu, dùng AVR-GCC và avr-objcopy trong PATH rồi chạy npm run build:firmware. Có thể chỉ định tệp thực thi bằng biến AVR_GCC và AVR_OBJCOPY.
+
+## Tài liệu
+
+- [Datasheet và thông tin sản phẩm ATmega328P của Microchip](https://www.microchip.com/en-us/product/atmega328p)
+- [Kho Embedded C của EWskills](https://www.ewskills.com/embedded-c)
+- [Embedded-C của aKaReZa75](https://github.com/aKaReZa75/Embedded-C)
+- [Modern Embedded Systems Programming của Quantum Leaps](https://github.com/QuantumLeaps/modern-embedded-programming-course)
+- [AVR8js của Wokwi](https://github.com/wokwi/avr8js). Giấy phép ở vendor/avr8js/LICENSE.
+
+Trang Nguồn và tài liệu đối chiếu các mô-đun với brochure *C Programming for Embedded Systems*.
+

@@ -50,8 +50,8 @@
     "uart-workshop":[ew("uart","EWskills · Thực hành UART")],
     buses:[ew("spi","EWskills · SPI"),ew("i2c","EWskills · I²C")],
     interrupts:[ew("interrupt","EWskills · Điều kiện ngắt và ISR")],
-    "cortex-startup":[["Quantum Leaps · Các bài về startup Cortex-M",quantumLessons]],
-    "rtos-workshop":[["Quantum Leaps · Các dự án RTOS",quantum]]
+    "cortex-startup":[["Microchip · Mã khởi động và vùng nhớ ATmega328P",microchip]],
+    "rtos-workshop":[["Microchip · Timer, ngắt và thực thi tác vụ trên AVR",microchip]]
   };
 
   const drillGroups = [

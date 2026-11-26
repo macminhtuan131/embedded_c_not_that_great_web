@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const {modules, tracks, lessons, exercises, projects, references, guides} = window.EmbeddedCourse;
+  const {modules, tracks, lessons, projects, references, guides} = window.EmbeddedCourse;
   const {materials,moduleReading,lessonReading,drillGroups,ewC} = references;
   const moduleById = new Map(modules.map(item=>[item.id,item]));
   const trackById = new Map(tracks.map(item=>[item.id,item]));
@@ -19,11 +19,20 @@
     guide:guides.length
   };
   const catalogViews = {ewskills:"all","huong-dan":"guide","bai-tap":"avr","trac-nghiem":"quiz"};
-  const allLabItems = [...lessons.filter(item=>exercises[item.id]||item.lab),...catalogItems];
+  const allLabItems = [...lessons,...catalogItems];
+  const avrLabs=window.AvrLabs.labs;
+  const {notes,quizLabs,guideLabs}=window.AvrTeaching;
+  const {render:renderBench,wiring}=window.AvrBench;
+  const quizLabId=item=>"avr-"+quizLabs[item.id.slice(4)];
+  const guideLabId=item=>guideLabs[item.moduleId]??
+    (item.moduleId?oldLessons.find(task=>task.moduleId===item.moduleId && task.type==="task").id:"hello");
+  const titleOf=item=>avrLabs[item.id]?.title??tidy(item.title);
+  const summaryOf=item=>item.type==="quiz"?avrLabs[quizLabId(item)].title:avrLabs[item.id]?.task??item.summary;
+
   const all = [...lessons,...catalogItems];
   const byId = new Map(all.map(item=>[item.id,item]));
   const i = window.icon;
-  const {esc,renderBitsViz,renderMemoryViz,renderAvrArch} = window.Visualizers;
+  const {esc,renderAvrArch} = window.Visualizers;
   const $ = selector => document.querySelector(selector);
   const main = $("#main");
   const storageKey = "xuong-nhung-v1";
@@ -34,16 +43,16 @@
   const stored = read(storageKey);
   const done = new Set((Array.isArray(stored.done) ? stored.done :
     Array.isArray(prior.completed) ? prior.completed.map(id=>"avr-"+id) : []).filter(id=>byId.has(id)));
-  const drafts = stored.drafts || {};
+  const drafts = stored.avrDrafts || {};
   const quiz = stored.quiz || {};
   const projectDone = new Set(Array.isArray(stored.projects) ? stored.projects : []);
   let theme = stored.theme || prior.theme || "light";
   let last = byId.has(stored.last) ? stored.last : byId.has("avr-"+prior.lessonId) ? "avr-"+prior.lessonId : "";
-  let route = ["",""], activeTab = "learn", outputTab = "cases", labFilter = "all", labQuery = "", result, step = 0;
-  let worker, runTimer, noticeTimer, running = false, compilerReady = false;
+  let route = ["",""], labFilter = "all", labQuery = "";
+  let noticeTimer;
   let board = {value:37,before:37,bit:5,expression:"PORTB = 0x25;"};
   function save() {
-    try { localStorage.setItem(storageKey,JSON.stringify({done:[...done],drafts,quiz,last,theme,projects:[...projectDone]})); } catch {}
+    try { localStorage.setItem(storageKey,JSON.stringify({done:[...done],drafts:stored.drafts,avrDrafts:drafts,quiz,last,theme,projects:[...projectDone]})); } catch {}
   }
   function notify(message) {
     const note = $("#notice");
@@ -61,8 +70,8 @@
   const progressPct = () => Math.round(count(lessons)*100/lessons.length);
   const bar = value => `<div class="bar" role="progressbar" aria-label="Tiến độ" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}"><span style="width:${value}%"></span></div>`;
   const lessonLink = id => (byId.get(id)?.guide?"#huong-dan/":"#bai/")+id;
-  const isAvrLab = item => item.type==="task" || item.lab==="avr";
-  const type = item => item.guide ? "Hướng dẫn" : item.type==="quiz" ? "Trắc nghiệm" : isAvrLab(item) ? "Lab AVR" : exercises[item.id] ? "Bài học + code" : "Bài giảng";
+  const isAvrLab = item => Boolean(avrLabs[item.id]);
+  const type = item => item.guide ? "Hướng dẫn" : item.type==="quiz" ? "Trắc nghiệm" : "Firmware AVR";
   const badge = (label,variant="") => `<span class="badge ${variant}">${esc(label)}</span>`;
   const section = (title,detail="") => `<div class="section-heading"><h2>${title}</h2>${detail?"<p>"+detail+"</p>":""}</div>`;
   const heading = (title,desc,mark) => `<div class="page-heading"><span class="phase-icon">${i(mark,23)}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div>`;
@@ -94,15 +103,15 @@
       <button class="icon-btn theme-btn" data-action="theme" aria-label="Đổi giao diện sáng tối" title="Đổi giao diện sáng tối">${i(theme==="dark"?"sun":"moon",18)}</button>
       <a class="top-progress" href="#tien-do" aria-label="Tiến độ học ${progressPct()} phần trăm"><span class="mini-ring" style="--value:${progressPct()}%"></span><span>${progressPct()}%</span></a></div></div>`;
   }
-  function lessonRow(item,index,practice=false) {
-    return `<a class="lesson-row" href="${lessonLink(item.id)}${practice && exercises[item.id]?"/thuc-hanh":""}"><span class="row-symbol ${done.has(item.id)?"complete":""}">
+  function lessonRow(item,index) {
+    return `<a class="lesson-row" href="${lessonLink(item.id)}"><span class="row-symbol ${done.has(item.id)?"complete":""}">
       ${done.has(item.id)?i("check",17):Number.isInteger(index)?pad(index+1):i(item.guide?"book":item.type==="quiz"?"target":isAvrLab(item)?"cpu":"code",17)}</span>
-      <span class="row-main"><strong>${esc(tidy(item.title))}</strong><small>${esc(item.summary)}</small></span><span class="row-type">${type(item)}</span>${i("right",17)}</a>`;
+      <span class="row-main"><strong>${esc(titleOf(item))}</strong><small>${esc(summaryOf(item))}</small></span><span class="row-type">${type(item)}</span>${i("right",17)}</a>`;
   }
   function home() {
-    const counts=[["book",modules.length,"Mô-đun học"],["terminal",Object.keys(exercises).length,"Bài chạy C trên web"],["cpu",catalogItems.length,"Mục theo EWskills"],["flask",projects.length,"Dự án thực hành"]];
+    const counts=[["book",modules.length,"Mô-đun học"],["terminal",Object.keys(avrLabs).length,"Firmware ATmega328P"],["cpu",catalogItems.length,"Mục theo EWskills"],["flask",projects.length,"Dự án thực hành"]];
     main.innerHTML = `<div class="container home"><div class="metrics" aria-label="Nội dung khóa học">${counts.map(([key,n,label])=>`<div class="metric"><div class="metric-icon">${i(key)}</div><div><strong>${n}</strong><span>${label}</span></div></div>`).join("")}</div>
-      <section class="path-section">${section("Lộ trình học","Bắt đầu với C trên máy tính rồi áp dụng vào các bài thực hành nhúng.")}
+      <section class="path-section">${section("Lộ trình học","Từ nút bấm và LED đầu tiên đến giao tiếp, ngắt và lập lịch trực tiếp trên ATmega328P.")}
       <div class="phase-grid">${tracks.map(track=>{
         const group=modules.filter(item=>item.track===track.id);
         return `<a class="phase-card ${track.color}" href="${trackHref("lo-trinh",track.id)}"><div class="phase-top"><span class="phase-icon">${i(track.icon,23)}</span>${badge("Phần "+track.number)}</div>
@@ -164,7 +173,7 @@
 
   const normalize = value => String(value).normalize("NFD").replace(/\p{Diacritic}/gu,"").replace(/đ/gi,"d").toLowerCase().trim();
   function matches(item, query) {
-    const text = normalize([item.title,item.summary,item.ewTitle,moduleById.get(item.module)?.title,groupById.get(item.moduleId)?.title].filter(Boolean).join(" "));
+    const text = normalize([titleOf(item),summaryOf(item),item.title,item.ewTitle,moduleById.get(item.module)?.title,groupById.get(item.moduleId)?.title].filter(Boolean).join(" "));
     return normalize(query).split(/\s+/).every(word=>text.includes(word));
   }
   function labScope() {
@@ -176,30 +185,29 @@
     const {track,group,catalog}=labScope();
     const items=catalog || group ? catalogItems : allLabItems;
     const filtered = items.filter(item=>trackOf(item)===track && (!group || item.moduleId===group.id) &&
-      (labFilter==="all" || (labFilter==="web" && exercises[item.id]) ||
+      (labFilter==="all" ||
       (labFilter==="avr" && isAvrLab(item)) || (labFilter==="quiz" && item.type==="quiz") ||
       (labFilter==="guide" && item.guide) || (labFilter==="todo" && !item.guide && !done.has(item.id))) && matches(item,labQuery));
     $("#lab-count").textContent=filtered.length+" mục";
-    $("#lab-rows").innerHTML=filtered.length?filtered.map(item=>lessonRow(item,undefined,true)).join(""):'<p class="empty">Không tìm thấy bài phù hợp.</p>';
+    $("#lab-rows").innerHTML=filtered.length?filtered.map(item=>lessonRow(item)).join(""):'<p class="empty">Không tìm thấy bài phù hợp.</p>';
   }
   function labs() {
     const {track,group,catalog}=labScope();
     const embedded=track.id==="nhung";
     const filters=[["all","Tất cả"]];
     if (embedded) {
-      if (!group && !catalog) filters.push(["web","Chạy trong web"]);
       filters.push(["guide","Hướng dẫn"],["avr","Lab AVR"],["quiz","Trắc nghiệm"]);
     }
     filters.push(["todo","Chưa hoàn thành"]);
     main.innerHTML=`<div class="container inner-page">${heading(catalog?"Kho học EWskills":group?group.title:"Luyện code",embedded?
       catalog?`${catalogCounts.guide} hướng dẫn, ${catalogCounts.task} bài tập AVR và ${catalogCounts.quiz} bài trắc nghiệm.`:
-      "Áp dụng C vào thanh ghi, xử lý dữ liệu và ngoại vi. Chọn một chủ đề EWskills để tập trung luyện.":"Chạy thử các chương trình C nền tảng với đầu vào và kết quả mẫu ngay trong trình duyệt.","terminal")}
+      "Áp dụng C vào thanh ghi, xử lý dữ liệu và ngoại vi. Chọn một chủ đề EWskills để tập trung luyện.":"Luyện C qua tín hiệu GPIO, dữ liệu USART0 và mẫu ADC0 trên vi điều khiển mô phỏng.","terminal")}
       ${trackSwitcher("luyen",track)}
       <div class="lab-toolbar"><label class="field-search">${i("search",18)}<input id="lab-search" type="search" placeholder="Tìm theo tên hoặc chủ đề" aria-label="Tìm trong bài thực hành"></label>
       ${embedded?`<label class="lab-group">Chủ đề EWskills
       <select id="lab-group"><option value="">Tất cả chủ đề</option>${drillGroups.map(item=>`<option value="${item.id}" ${item===group?"selected":""}>${item.title}</option>`).join("")}</select></label>`:""}</div>
       ${embedded && !catalog && !group?'<p class="drill-prerequisite"><a class="text-link" href="#luyen/nhung/ewskills">Mở kho EWskills</a></p>':""}
-      ${group?`<p class="drill-prerequisite">Ôn trước khi luyện <a class="text-link" href="${lessonLink(group.prerequisite)}">${byId.get(group.prerequisite).title}</a></p>`:""}
+      ${group?`<p class="drill-prerequisite">Ôn trước khi luyện <a class="text-link" href="${lessonLink(group.prerequisite)}">${esc(titleOf(byId.get(group.prerequisite)))}</a></p>`:""}
       <div class="lab-filters"><div class="tabs" aria-label="Lọc bài thực hành">
       ${filters.map(([key,label])=>`<button data-filter="${key}" class="${labFilter===key?"active":""}" aria-pressed="${labFilter===key}">${label}</button>`).join("")}
       </div><span id="lab-count" aria-live="polite"></span></div><div class="panel" id="lab-rows"></div>
@@ -217,11 +225,13 @@
     const body=item?`<a class="breadcrumb" href="#du-an">Dự án</a>${heading(item.title,item.summary,item.icon)}
       <div class="project-layout"><article class="panel prose"><h2>Các bước thực hiện</h2><ol class="content-list">${item.steps.map(value=>'<li>'+esc(value)+'</li>').join("")}</ol>
       <h2>Điều kiện nghiệm thu</h2>${list(item.checks)}<button class="btn ${projectDone.has(id)?"secondary":"primary"}" data-action="project-done" data-id="${id}" aria-pressed="${projectDone.has(id)}">${i("check",18)} ${projectDone.has(id)?"Đã hoàn thành":"Đánh dấu hoàn thành"}</button></article>
-      <aside class="panel project-prep"><h2>Bài cần xem trước</h2>${item.needs.map(key=>lessonRow(byId.get(key))).join("")}</aside></div>` :
-      `${heading("Dự án thực hành","Ghép những gì đã học thành chương trình hoàn chỉnh, từ bài chạy trên máy tính đến firmware có phép đo.","flask")}
+      <div><aside class="panel project-prep"><h2>Bài cần xem trước</h2>${item.needs.map(key=>lessonRow(byId.get(key))).join("")}</aside>
+        <p class="project-example">Chạy một mạch thành phần trước khi ghép dự án.</p><aside id="workspace"></aside></div></div>` :
+      `${heading("Dự án thực hành","Ghép các bài đã học thành firmware hoàn chỉnh rồi nghiệm thu trên chân và thanh ghi ATmega328P.","flask")}
       ${tracks.map(track=>`<section class="subsection">${section("Phần "+track.number+" · "+track.title)}
       <div class="project-grid">${projects.filter(project=>trackOf(byId.get(project.needs[0]))===track).map(projectCard).join("")}</div></section>`).join("")}`;
     main.innerHTML=`<div class="container inner-page">${body}${foot()}</div>`;
+    if(item) renderBench($("#workspace"),item.lab,{example:true});
   }
   function resources(id) {
     const track=trackById.get(id) || tracks[0];
@@ -259,28 +269,35 @@
     const sequence=item.type?oldLessons:lessons;
     const idx=sequence.indexOf(item);
     const next=sequence[idx+1];
-    const workspace=Boolean(exercises[id] || item.type==="task");
+    const labId=item.type==="quiz"?quizLabId(item):id;
     const parentLink=group?"#luyen/nhung/"+group.id:"#lo-trinh/"+mod.id;
-    const relatedItems=sequence.filter(other=>group?other.moduleId===group.id:other.module===mod.id);
     const readingLabel=group?"Nguồn bài tập":lessonReading[id]?"Tài liệu đọc thêm":"Tài liệu cho mô-đun này";
     const reading=group?[["EWskills · Bài tập Embedded C",ewC]]:lessonReading[id]||moduleReading[mod.id];
     main.innerHTML=`<div class="container inner-page lesson-page">
       <div class="crumb-row"><a href="${trackHref("lo-trinh",track.id)}">Phần ${track.number} · ${track.shortTitle}</a>
         ${i("right",14)}<a href="${parentLink}">${group?group.title:mod.title}</a></div>
       <header class="lesson-heading"><div class="lesson-labels">${badge(type(item),"level")}${item.type?badge(item.level):badge("Mô-đun "+pad(mod.number))}</div>
-      <h1>${esc(tidy(item.title))}</h1><p>${esc(item.summary)}</p></header>
-      <div class="lesson-layout ${workspace?"":"reading-layout"}"><article class="panel lesson-content" id="lesson-content"></article>
-      ${workspace?'<aside class="lab-workspace" id="workspace" aria-label="Không gian thực hành code"></aside>':
-        `<aside class="panel related"><h2>${group?"Cùng chủ đề":"Trong mô-đun này"}</h2>${relatedItems.map(other=>`<a class="${other===item?"current":""}" href="${lessonLink(other.id)}">${done.has(other.id)?i("check",16):i("book",16)}${esc(tidy(other.title))}</a>`).join("")}</aside>`}</div>
+      <h1>${esc(titleOf(item))}</h1><p>${item.type==="quiz"?"Dự đoán kết quả firmware trên ATmega328P rồi chạy ca để đối chiếu.":"ATmega328P · C bare-metal"}</p></header>
+      <div class="lesson-layout avr-layout"><article class="panel lesson-content" id="lesson-content"></article>
+      <aside id="workspace" aria-label="Thực hành firmware"></aside></div>
       ${readingLinks(readingLabel,reading)}
       <nav class="lesson-nav" aria-label="Chuyển bài học"><a class="btn secondary" href="${sequence[idx-1]?lessonLink(sequence[idx-1].id):parentLink}">${sequence[idx-1]?"Bài trước":group?"Chủ đề":"Mô-đun"}</a>
       <button class="btn ${done.has(id)?"secondary":"primary"}" data-action="complete" aria-pressed="${done.has(id)}">${i("check",18)}<span>${done.has(id)?"Đã hoàn thành":"Đánh dấu hoàn thành"}</span></button>
-      ${next?`<a class="btn secondary" href="${lessonLink(next.id)}">${trackOf(next)!==track?"Sang phần C nhúng":"Bài tiếp"}</a>`:""}</nav>${foot()}</div>`;
+      ${next?`<a class="btn secondary" href="${lessonLink(next.id)}">${trackOf(next)!==track?"Sang phần Firmware AVR":"Bài tiếp"}</a>`:""}</nav>${foot()}</div>`;
     lessonContent(item);
-    if (workspace) renderWorkspace(item);
-  }
-  function tabButton(kind,active,[key,symbol,label]) {
-    return `<button class="${key===active?"active":""}" aria-pressed="${key===active}" data-${kind}="${key}">${i(symbol,17)}<span>${label}</span></button>`;
+    renderBench($("#workspace"),labId,{
+      example:item.type==="quiz",
+      predict:item.type==="quiz",
+      draft:item.type==="quiz"?undefined:drafts[id],
+      onDraft:item.type==="quiz"?undefined:value=>{drafts[id]=value;save();},
+      onPass:item.type==="quiz"?undefined:()=>{
+        if (!$("#lesson-content") || route[1]!==id || done.has(id)) return;
+        done.add(id);
+        save();
+        updateCompletion(item);
+        notify("HEX của bạn vượt qua các ca. Đã lưu tiến độ.");
+      }
+    });
   }
   function teachingSections(sections) {
     return sections.map(([title,text,snippet])=>`<section class="teach-block"><h2>${esc(title)}</h2><p>${inline(text)}</p>${snippet?code(snippet):""}</section>`).join("");
@@ -292,192 +309,84 @@
       return;
     }
     const group=groupById.get(item.moduleId);
+    const labId=guideLabId(item), lab=avrLabs[labId];
     main.innerHTML=`<div class="container inner-page lesson-page">
-      <div class="crumb-row"><a href="#lo-trinh/nhung">Phần 2 · C nhúng</a>${i("right",14)}<a href="#luyen/nhung/huong-dan">Hướng dẫn EWskills</a></div>
+      <div class="crumb-row"><a href="#lo-trinh/nhung">Phần 2 · Firmware AVR</a>${i("right",14)}<a href="#luyen/nhung/huong-dan">Hướng dẫn EWskills</a></div>
       <header class="lesson-heading"><div class="lesson-labels">${badge("Hướng dẫn tiếng Việt","level")}</div><h1>${esc(item.title)}</h1><p>${esc(item.summary)}</p></header>
-      <div class="lesson-layout reading-layout">
-        <article class="panel prose">${teachingSections(item.sections)}
+      <div class="lesson-layout avr-layout">
+        <article class="panel prose"><h2>Thử với ATmega328P</h2><p>${inline(lab.task)}</p>${wiring(lab)}
+          <p>Dự đoán đầu ra của ca bên cạnh rồi chạy HEX để xem kết quả. Mở <a class="text-link" href="${lessonLink(labId)}">bài firmware tương ứng</a> để xem toàn bộ nhiệm vụ.</p>
+          ${teachingSections(item.sections)}
           <p class="course-source-link">${externalLink(["Đọc hướng dẫn gốc trên EWskills",item.source])}</p>
           <nav class="guide-actions" aria-label="Thực hành tiếp theo">${group?`<a class="btn primary" href="#luyen/nhung/${group.id}">Luyện chủ đề này</a>
             <a class="btn secondary" href="${lessonLink(group.prerequisite)}">Ôn bài liên quan</a>`:'<a class="btn primary" href="#luyen/nhung/huong-dan">Xem hướng dẫn theo chủ đề</a><a class="btn secondary" href="#lo-trinh/chuan-bi">Ôn C nền tảng</a>'}
             ${item.id==="toan-tu-bit"?'<a class="btn secondary" href="#mo-phong">Mô phỏng bit</a>':""}</nav>
         </article>
-        <aside class="panel related"><h2>Hướng dẫn trong kho</h2>
-          ${guides.map(guide=>`<a ${guide===item?'class="current" aria-current="page"':""} href="${lessonLink(guide.id)}">${i("book",16)}${esc(guide.title)}</a>`).join("")}</aside>
+        <aside id="workspace" aria-label="Thí nghiệm trong hướng dẫn"></aside>
       </div>${foot()}</div>`;
+    renderBench($("#workspace"),labId,{example:true});
   }
   function lessonContent(item) {
-    const exercise=exercises[item.id];
-    const tabs=item.type==="task"?[["learn","book","Đề bài"],["solution","light","Lời giải & mô phỏng"]]:
-      exercise?[["learn","book","Bài giảng"],["task","terminal","Đề bài"],["solution","light","Lời giải"]]:[];
-    const tabbar=tabs.length?'<div class="panel-tabs">'+tabs.map(tab=>tabButton("tab",activeTab,tab)).join("")+'</div>':"";
-    let body;
-    if (item.type==="quiz") body=quizBody(item);
-    else if (item.type==="task") body=activeTab==="solution"?oldSolution(item):oldProblem(item);
-    else if (exercise && activeTab!=="learn") {
-      body=`<h2>${activeTab==="task"?"Nhiệm vụ":"Lời giải tham khảo"}</h2><p>${esc(exercise.task)}</p>
-        ${activeTab==="task"?hints(exercise.hints):code(exercise.solution)+'<button class="btn secondary" data-action="use-solution">'+i("copy",17)+' Dùng mã lời giải</button>'}`;
-    } else {
-      body=teachingSections(item.sections);
-      if (exercise) body+=`<button class="btn secondary" data-tab="task">${i("terminal",17)} Mở đề bài thực hành</button>`;
-    }
-    $("#lesson-content").innerHTML=tabbar+'<div class="prose lesson-prose">'+body+'</div>';
-  }
-  function hints(items) {
-    return '<div class="hint-stack">'+items.filter(Boolean).map((text,index)=>`<details><summary>Gợi ý ${index+1}</summary><p>${inline(text)}</p></details>`).join("")+'</div>';
-  }
-  function oldProblem(item) {
-    const task=item.problem;
-    return `<h2>Nhiệm vụ</h2><p>${inline(task.scenario)}</p>${task.prototype?code(task.prototype):""}
-      <h2>Ca kiểm tra</h2><div class="table-wrap"><table><thead><tr><th>Ca</th><th>Đầu vào</th><th>Kỳ vọng</th></tr></thead><tbody>
-      ${task.testRows.map(row=>'<tr>'+row.map(cell=>'<td>'+inline(cell)+'</td>').join("")+'</tr>').join("")}</tbody></table></div>
-      <h2>Thực hiện trên AVR</h2><p>Mở hoặc tải mã mẫu sang dự án GCC C cho ATmega328P. Điền phần còn thiếu, xem cảnh báo khi biên dịch rồi đối chiếu từng ca.</p>
-      <p>${inline(task.studioCheck)}</p>${hints([task.hint1,task.hint2])}`;
-  }
-  function oldSolution(item) {
-    return `<h2>Từng bước trong lời giải</h2><p>Chọn một dòng để xem diễn giải và trạng thái minh họa. Đối chiếu cờ CPU, điện áp chân GPIO và thời gian trên công cụ đích.</p>
-      <div class="step-list">${item.lines.map((line,index)=>`<button class="${index===step?"active":""}" aria-pressed="${index===step}" data-step="${index}"><span>${pad(index+1)}</span><code>${esc(line.code||"Quan sát")}</code></button>`).join("")}</div>
-      <div id="step-detail">${stepBody(item)}</div><h2>Điều cần nhớ</h2><p>${inline(item.remember)}</p><h2>Lỗi thường gặp</h2><p>${inline(item.pitfall)}</p>`;
-  }
-  function stepBody(item) {
-    const line=item.lines[step];
-    if (!line) return "";
-    const v=line.viz;
-    return `<div class="step-explain"><p>${inline(line.explain)}</p>${v?.kind==="bits"?renderBitsViz(v):v?.cells?renderMemoryViz(v):""}
-      <div class="step-controls"><button class="btn secondary" data-step="${step-1}" ${step===0?"disabled":""}>Bước trước</button><span>${step+1} / ${item.lines.length}</span>
-      <button class="btn secondary" data-step="${step+1}" ${step===item.lines.length-1?"disabled":""}>Bước sau</button></div></div>`;
-  }
-  function quizBody(item) {
-    const answers=quiz[item.id]||{};
-    const correct=item.questions.filter((q,index)=>answers[index]===q.ans).length;
-    return `<div class="quiz-summary"><h2>Kiểm tra kiến thức</h2>${badge(correct+"/"+item.questions.length+" câu đúng",correct===item.questions.length?"success":"")}</div>
-      <p>${inline(item.avrContext)}</p>
-      ${item.questions.map((q,index)=>`<section class="quiz-q"><h3>${index+1}. ${inline(q.q)}</h3>
-      <div class="quiz-options">${q.opts.map((option,which)=>`<button class="${answers[index]===which?(which===q.ans?"right-answer":"wrong-answer"):""}" aria-pressed="${answers[index]===which}" data-quiz="${index}" data-answer="${which}"><span>${String.fromCharCode(65+which)}</span>${inline(option)}</button>`).join("")}</div>
-      ${answers[index]===undefined?"":`<p class="quiz-feedback"><strong>${answers[index]===q.ans?"Đúng.":"Chưa đúng."}</strong> ${inline(q.exp)}</p>`}</section>`).join("")}`;
+    const lab=avrLabs[item.type==="quiz"?quizLabId(item):item.id];
+    const theory=notes[item.id];
+    const body=item.type==="quiz"?quizBody(item):
+      `<h2>Nhiệm vụ trên ATmega328P</h2><p>${inline(lab.task)}</p>${wiring(lab)}
+      ${theory?`<h2>Từ tín hiệu đến mã C</h2><p>${inline(theory)}</p>`:""}
+      <h2>Kiểm bằng firmware</h2><ol class="content-list">
+        <li>Chọn ca và ghi lại đầu vào. Từ nhiệm vụ, dự đoán mức chân, byte phát hoặc giá trị thanh ghi cần kiểm.</li>
+        <li>Chạy HEX mẫu và tìm phần tương ứng ở cột Đo được. Mở ảnh chụp cổng để so hướng DDRx, chốt PORTx và mức chân PINx.</li>
+        <li>Hoàn thành main.c, tạo HEX đích atmega328p và nạp vào bàn thực hành để kiểm lại ${lab.cases.length} ca.</li>
+      </ol>`;
+    $("#lesson-content").innerHTML='<div class="prose lesson-prose">'+body+'</div>';
   }
 
-function renderWorkspace(item) {
-    const exercise=exercises[item.id];
-    $("#workspace").innerHTML=`<section class="editor-panel" aria-label="Trình soạn thảo C">
-      <div class="editor-top"><div>${i("code",18)}<strong>Trình soạn thảo</strong></div><span>${exercise?"C17 · WebAssembly":"C · ATmega328P"}</span></div>
-      <div class="editor-toolbar"><span>${i("file",16)}${esc(exercise?"main.c":item.filename||"main.c")}</span><div>
-        <button class="editor-btn" data-action="copy" title="Sao chép mã" aria-label="Sao chép mã">${i("copy",17)}</button>
-        <button class="editor-btn" data-action="reset" title="Khôi phục mã mẫu" aria-label="Khôi phục mã mẫu">${i("reset",17)}</button>
-        <button class="editor-btn" data-action="download">Tải .c</button></div></div>
-      <div class="editor-area"><pre id="line-nums" aria-hidden="true"></pre><div class="editor-input"><pre id="code-highlight" aria-hidden="true"></pre><textarea id="editor" maxlength="65536" aria-label="Mã nguồn C" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea></div></div>
-      <div class="editor-foot"><span>${exercise?"Ctrl + Enter để chạy":"Biên dịch bằng công cụ AVR"}</span>
-       ${exercise?'<button class="btn primary run-btn" data-action="run">'+i("play",16)+' <span>Chạy kiểm thử</span></button>':""}</div></section>
-      <section class="panel output" id="output" aria-label="Ca kiểm thử và kết quả"></section>`;
-    $("#editor").value=drafts[item.id]??(exercise?exercise.starter:item.problem.starterCode);
-    drawCode();
-    renderOutput(item);
-  }
-  function drawCode() {
-    const editor=$("#editor");
-    const syntax=/\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|^[ \t]*#[^\n]*|\b(?:int|void|if|else|unsigned|char|return|static|long|float|while|for|size_t|const|uint\d+_t|struct|enum|typedef|bool|break|true|false|NULL)\b|\b(?:0x[\da-fA-F]+|\d+)\b/gm;
-    let start=0, html="";
-    for (const match of editor.value.matchAll(syntax)) {
-      const token=match[0];
-      const kind=token.startsWith("/")?"comment":/^["']/.test(token)?"string":token.trimStart().startsWith("#")?"directive":/^\d/.test(token)?"number":"keyword";
-      html+=esc(editor.value.slice(start,match.index))+'<span class="tok-'+kind+'">'+esc(token)+'</span>';
-      start=match.index+token.length;
-    }
-    $("#code-highlight").innerHTML=html+esc(editor.value.slice(start))+"\n";
-    $("#line-nums").textContent=editor.value.split("\n").map((_,index)=>index+1).join("\n")+"\n";
-    scrollEditor();
-  }
-  function scrollEditor() {
-    const editor=$("#editor");
-    $("#code-highlight").scrollTop=editor.scrollTop;
-    $("#code-highlight").scrollLeft=editor.scrollLeft;
-    $("#line-nums").scrollTop=editor.scrollTop;
-  }
-  function renderOutput(item) {
-    const panel=$("#output");
-    if (!panel || !item) return;
-    const exercise=exercises[item.id];
-    if (!exercise) {
-      panel.innerHTML=`<div class="panel-tabs"><span class="output-label">${i("cpu",17)} Kiểm tra trên AVR</span></div>
-        <div class="output-body"><p>Tải mã .c để biên dịch bằng công cụ AVR và dùng bảng ca kiểm tra trong đề bài. Mở lời giải để xem mô phỏng từng bước.</p><a href="#mo-phong" class="text-link">Mở bộ mô phỏng bit</a></div>`;
-      return;
-    }
-    const cells=(first,a,second,b)=>`<div class="case-data"><div><small>${first}</small><pre>${esc(a===""?"(trống)":a)}</pre></div><div><small>${second}</small><pre>${esc(b===""?"(trống)":b)}</pre></div></div>`;
-    let body;
-    if (outputTab==="cases") {
-      body=exercise.cases.map(([label,input,expected],index)=>`<details class="case" ${index===0?"open":""}>
-        <summary><strong>${esc(label)}</strong><span>Ca ${index+1}</span></summary>${cells("ĐẦU VÀO",input,"KỲ VỌNG",expected)}</details>`).join("");
-    } else if (running) body=`<p class="running"><span></span>${compilerReady?"Đang chạy chương trình…":"Đang chuẩn bị trình biên dịch C… Lần đầu cần tải khoảng 19 MB."}</p>`;
-    else if (!result) body="<p>Nhấn Chạy kiểm thử để xem đầu ra, lỗi biên dịch và kết quả từng ca.</p>";
-    else if (result.kind==="compile" || result.kind==="error") {
-      body=`<div class="result-title bad">${result.kind==="compile"?"Mã chưa biên dịch được":"Lần chạy đã dừng"}</div>
-        ${result.kind==="compile"?"<p>Đọc lỗi đầu tiên và kiểm dòng được chỉ ra trong trình soạn thảo.</p>":""}
-        <pre class="diagnostic">${esc(result.diagnostics||result.message)}</pre>`;
+  function quizQuestions(item) {
+    const lab=avrLabs[quizLabId(item)], test=lab.cases[0];
+    const hex=value=>"0x"+value.toString(16).toUpperCase().padStart(2,"0");
+    const asBytes=values=>values.length?values.map(hex).join(" "):"Không phát byte";
+    const target=Object.keys(test.regs??{}).find(name=>name.startsWith("PORT"))??Object.keys(test.regs??{})[0];
+    const rotate=(options,correct)=> {
+      const ans=Number(item.id.slice(4))%(options.length+1);
+      options.splice(ans,0,correct);
+      return {opts:options,ans};
+    };
+    let practical;
+    if(test.tx) {
+      const expected=test.tx, first=expected[0]??0;
+      const alternatives=expected.length?[[first^1,...expected.slice(1)],[first^128,...expected.slice(1)],[]]:[[0],[1],[255]];
+      practical={
+        q:"Với đầu vào của Ca 1 ở bàn thực hành, PD1/TXD phát chuỗi byte nào?",
+        ...rotate(alternatives.map(asBytes),asBytes(expected)),
+        exp:"Chạy Ca 1 và xem USART0 TX. Kết quả theo thứ tự byte là "+asBytes(expected)+". Đối chiếu từng lần ghi UDR0 trong lời giải."
+      };
+    } else if(target) {
+      const value=test.regs[target];
+      practical={
+        q:"Với đầu vào của Ca 1, "+target+" có giá trị nào sau khi firmware xử lý?",
+        ...rotate([1,2,4].map(mask=>hex(value^mask)),hex(value)),
+        exp:"Bảng đo ở Ca 1 cho "+target+" bằng "+hex(value)+". Xem cách firmware đọc chân vào rồi thay đổi đúng mặt nạ hoặc trường cấu hình."
+      };
     } else {
-      const results=result.results.map((run,index)=>({...run,passed:!run.error && run.stdout===exercise.cases[index][2]}));
-      const passed=results.filter(run=>run.passed).length;
-      body=`<div class="result-title ${passed===results.length?"good":"bad"}">${passed} / ${results.length} ca đạt</div>`+
-        results.map((run,index)=>`<details class="case" ${index===results.findIndex(other=>!other.passed)?"open":""}><summary><strong>${esc(exercise.cases[index][0])}</strong>
-          ${badge(run.passed?"Đạt":run.error?"Lỗi":"Chưa đạt",run.passed?"success":"warning")}</summary>${cells("KỲ VỌNG",exercise.cases[index][2],run.error?"LỖI KHI CHẠY":"KẾT QUẢ",run.error||run.stdout)}</details>`).join("")+
-          (result.diagnostics?'<details class="case"><summary>Cảnh báo biên dịch</summary><pre class="diagnostic">'+esc(result.diagnostics)+'</pre></details>':"");
+      practical={
+        q:"Cần thay đổi dữ liệu ở mục nào để kiểm đầu vào của Ca 1?",
+        opts:["Nguồn tín hiệu được liệt kê trong bàn thực hành","Giá trị đã đo trong cột kết quả","Tiêu đề bài","Tên tệp đang tải"],ans:0,
+        exp:"Mỗi ca áp đặt tín hiệu đầu vào trước hoặc trong khi CPU chạy rồi ghi nhận kết quả."
+      };
     }
-    panel.innerHTML=`<div class="panel-tabs">${[["cases","target","Ca kiểm thử"],["result","terminal","Kết quả"]].map(tab=>tabButton("output",outputTab,tab)).join("")}</div>
-      <div class="output-body" aria-live="polite">${body}</div>`;
-    $(".run-btn span").textContent=running?"Dừng":"Chạy kiểm thử";
+    return [{...practical,key:"avr"},...item.questions.map((q,key)=>({...q,key}))];
   }
-  function clearRun(terminate=false) {
-    clearTimeout(runTimer);
-    if (terminate && worker) {
-      worker.terminate();
-      worker=undefined;
-      compilerReady=false;
-    }
-    running=false;
+  function quizBody(item) {
+    const questions=quizQuestions(item), answers=quiz[item.id]||{};
+    const correct=questions.filter(q=>answers[q.key]===q.ans).length;
+    const lab=avrLabs[quizLabId(item)];
+    return `<div class="quiz-summary"><h2>Kiểm tra trên ATmega328P</h2>${badge(correct+"/"+questions.length+" câu đúng",correct===questions.length?"success":"")}</div>
+      <p>${inline(lab.task)}</p>${wiring(lab)}
+      <p>${inline(item.avrContext)}</p>
+      ${questions.map((q,index)=>`<section class="quiz-q"><h3>${index+1}. ${inline(q.q)}</h3>
+      <div class="quiz-options">${q.opts.map((option,which)=>`<button class="${answers[q.key]===which?(which===q.ans?"right-answer":"wrong-answer"):""}" aria-pressed="${answers[q.key]===which}" data-quiz="${q.key}" data-answer="${which}"><span>${String.fromCharCode(65+which)}</span>${inline(option)}</button>`).join("")}</div>
+      ${answers[q.key]===undefined?"":`<p class="quiz-feedback"><strong>${answers[q.key]===q.ans?"Đúng.":"Chưa đúng."}</strong> ${inline(q.exp)}</p>`}</section>`).join("")}`;
   }
-  function runCode(item) {
-    const exercise=exercises[item?.id];
-    if (!exercise) return;
-    outputTab="result";
-    const fail=message=>{
-      clearRun(true);
-      result={kind:"error",message};
-      renderOutput(item);
-    };
-    if (running) { fail("Bạn đã dừng lần chạy."); return; }
-    if (location.protocol==="file:") {
-      fail("Để chạy mã C, chạy npm start trong thư mục dự án rồi mở http://localhost:5173.");
-      return;
-    }
-    if (!worker) worker=new Worker("./js/compiler-worker.js");
-    running=true;
-    result=null;
-    worker.onerror=()=>fail("Không khởi động được trình biên dịch. Hãy tải lại và thử lại.");
-    const limit=(ms,message)=>{
-      clearTimeout(runTimer);
-      runTimer=setTimeout(()=>fail(message),ms);
-    };
-    worker.onmessage=({data})=>{
-      if (data.kind==="running") {
-        compilerReady=true;
-        limit(5000,"Chương trình chạy quá lâu. Kiểm tra điều kiện dừng của vòng lặp.");
-        renderOutput(item);
-        return;
-      }
-      if (data.kind==="error") clearRun(true);
-      else { compilerReady=true; clearRun(); }
-      result=data;
-      if (data.kind==="result" && data.results.every((run,index)=>!run.error && run.stdout===exercise.cases[index][2])) {
-        if (!done.has(item.id)) notify("Đã lưu bài hoàn thành.");
-        done.add(item.id);
-        save();
-        updateCompletion(item);
-      }
-      renderOutput(item);
-    };
-    renderOutput(item);
-    limit(compilerReady?15000:70000,"Trình biên dịch phản hồi quá chậm. Hãy thử chạy lại.");
-    worker.postMessage({code:$("#editor").value,inputs:exercise.cases.map(([,input])=>input)});
-  }
+
   function updateCompletion(item) {
     const button=$('[data-action="complete"]');
     const checked=done.has(item.id);
@@ -516,11 +425,11 @@ function renderWorkspace(item) {
     $(action==="bit"?'[data-board="bit"][data-bit="'+pos+'"]':'[data-board="'+action+'"]').focus({preventScroll:true});
   }
 
-function search() {
+  function search() {
     const dialog=$("#search-dialog");
     if (dialog.open) return;
     dialog.innerHTML=`<div class="search-head"><h2 id="search-title">Tìm bài học</h2><button class="icon-btn" data-action="close-search" aria-label="Đóng tìm kiếm">${i("close")}</button></div>
-      <label class="field-search">${i("search",19)}<input type="search" id="global-search" placeholder="Thử tìm «con trỏ», GPIO hoặc RTOS" aria-label="Từ khóa tìm bài học"></label>
+      <label class="field-search">${i("search",19)}<input type="search" id="global-search" placeholder="Thử tìm PD2, PORTB hoặc «con trỏ»" aria-label="Từ khóa tìm bài học"></label>
       <div id="search-results" class="search-results"></div>`;
     dialog.showModal();
     $("#global-search").focus();
@@ -531,17 +440,12 @@ function search() {
     $("#search-results").innerHTML=found.length?found.map(item=>lessonRow(item)).join(""):'<p class="empty">Không tìm thấy bài học.</p>';
   }
   function go() {
-    if (running) clearRun(true);
     route=location.hash.slice(1).split("/");
     const [page,id]=route;
     if (page==="luyen") {
       labFilter=labScope().catalog?catalogViews[route[2]]:"all";
       labQuery="";
     }
-    activeTab=page==="bai" && route[2]==="thuc-hanh" && exercises[id] ? "task" : "learn";
-    outputTab="cases";
-    result=null;
-    step=0;
     if ($("#search-dialog").open) $("#search-dialog").close();
     if (page==="bai" && byId.has(id)) { last=id; save(); }
     renderHeader();
@@ -558,26 +462,6 @@ function search() {
     document.title=page&&title?title+" — Xưởng Nhúng":"Xưởng Nhúng — Học lập trình C nhúng";
     if (window.scrollY) window.scrollTo(0,0);
   }
-  async function copyEditor() {
-    const editor=$("#editor");
-    try {
-      await navigator.clipboard.writeText(editor.value);
-      notify("Đã sao chép mã C.");
-    } catch {
-      editor.focus();
-      editor.select();
-      notify("Mã đã được chọn. Dùng lệnh sao chép của trình duyệt.");
-    }
-  }
-  function setEditor(item,value) {
-    const editor=$("#editor");
-    editor.value=value;
-    drafts[item.id]=value;
-    save();
-    drawCode();
-    if (exercises[item.id] && !running) { result=null; outputTab="cases"; renderOutput(item); }
-    editor.focus();
-  }
   document.addEventListener("click",event=>{
     const anchor=event.target.closest("a");
     if (anchor?.closest("#search-dialog")) $("#search-dialog").close();
@@ -585,7 +469,7 @@ function search() {
     const button=event.target.closest("button");
     if (!button) return;
     const item=byId.get(route[1]);
-    const {action,tab,output,filter,board:boardAction}=button.dataset;
+    const {action,filter,board:boardAction}=button.dataset;
     if (action==="theme") {
       theme=theme==="dark"?"light":"dark";
       document.documentElement.dataset.theme=theme;
@@ -594,18 +478,6 @@ function search() {
       $('[data-action="theme"]').focus();
     } else if (action==="search") search();
     else if (action==="close-search") $("#search-dialog").close();
-    else if (action==="use-solution") setEditor(item,exercises[item.id].solution);
-    else if (action==="copy") copyEditor();
-    else if (action==="download") {
-      const link=document.createElement("a");
-      link.href=URL.createObjectURL(new Blob([$("#editor").value],{type:"text/plain;charset=utf-8"}));
-      link.download=exercises[item.id]?"main.c":item.filename||"main.c";
-      link.click();
-      setTimeout(()=>URL.revokeObjectURL(link.href),1000);
-    } else if (action==="reset") {
-      const starter=exercises[item.id]?.starter??item.problem.starterCode;
-      if ($("#editor").value===starter || window.confirm("Khôi phục mã mẫu và thay nội dung đang soạn?")) setEditor(item,starter);
-    } else if (action==="run") runCode(item);
     else if (action==="complete") {
       if (done.has(item.id)) done.delete(item.id);
       else done.add(item.id);
@@ -618,15 +490,6 @@ function search() {
       save();
       renderProjects(id);
       $('[data-action="project-done"]').focus({preventScroll:true});
-    } else if (tab) {
-      activeTab=tab;
-      lessonContent(item);
-      $(".panel-tabs [data-tab='"+tab+"']")?.focus({preventScroll:true});
-      if (!button.closest(".panel-tabs")) $("#lesson-content").scrollIntoView({block:"start"});
-    } else if (output) {
-      outputTab=output;
-      renderOutput(item);
-      $('[data-output="'+output+'"]').focus({preventScroll:true});
     } else if (filter) {
       labFilter=filter;
       document.querySelectorAll("button[data-filter]").forEach(el=>{
@@ -635,18 +498,10 @@ function search() {
       });
       labRows();
     } else if (boardAction) applyBoard(boardAction,button.dataset.bit===undefined?undefined:Number(button.dataset.bit));
-    else if (button.dataset.step!==undefined) {
-      step=Number(button.dataset.step);
-      document.querySelectorAll(".step-list button").forEach((el,index)=>{
-        el.classList.toggle("active",index===step);
-        el.setAttribute("aria-pressed",index===step);
-      });
-      $("#step-detail").innerHTML=stepBody(item);
-      if (!button.isConnected) $('.step-list [data-step="'+step+'"]')?.focus({preventScroll:true});
-    } else if (button.dataset.quiz!==undefined) {
+    else if (button.dataset.quiz!==undefined) {
       const answers=quiz[item.id]||={};
       answers[button.dataset.quiz]=Number(button.dataset.answer);
-      if (item.questions.every((q,index)=>answers[index]===q.ans)) { done.add(item.id); updateCompletion(item); }
+      if (quizQuestions(item).every(q=>answers[q.key]===q.ans)) { done.add(item.id); updateCompletion(item); }
       save();
       lessonContent(item);
       $('[data-quiz="'+button.dataset.quiz+'"][data-answer="'+button.dataset.answer+'"]')?.focus({preventScroll:true});
@@ -656,11 +511,6 @@ function search() {
     const id=event.target.id;
     if (id==="lab-search") { labQuery=event.target.value; labRows(); }
     if (id==="global-search") searchResults(event.target.value);
-    if (id==="editor") {
-      drafts[route[1]]=event.target.value;
-      save();
-      drawCode();
-    }
   });
   document.addEventListener("change",event=>{
     if (event.target.id==="board-bit") board.bit=Number(event.target.value);
@@ -668,13 +518,8 @@ function search() {
       location.hash="#luyen/nhung/"+(event.target.value||"ewskills");
     }
   });
-  document.addEventListener("scroll",event=>{ if (event.target.id==="editor") scrollEditor(); },true);
   document.addEventListener("keydown",event=>{
     if ((event.ctrlKey||event.metaKey) && event.key.toLowerCase()==="k") { event.preventDefault(); search(); }
-    if (event.target.id==="editor" && (event.ctrlKey||event.metaKey) && event.key==="Enter") {
-      event.preventDefault();
-      runCode(byId.get(route[1]));
-    }
   });
   document.documentElement.dataset.theme=theme;
   window.addEventListener("hashchange",go);
